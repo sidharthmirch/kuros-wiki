@@ -1,0 +1,262 @@
+# Instincts generated from https://github.com/sidharthmirch/kuros-wiki
+# Generated: 2026-04-15T04:32:31.133Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: kuros-wiki-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/sidharthmirch/kuros-wiki
+---
+
+# Kuros Wiki Commit Length
+
+## Action
+
+Keep commit messages concise (~19 characters)
+
+## Evidence
+
+- Average commit message length: 19 chars
+- Based on 1 commits
+
+---
+id: kuros-wiki-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/sidharthmirch/kuros-wiki
+---
+
+# Kuros Wiki Naming Files
+
+## Action
+
+Use PascalCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: PascalCase
+
+---
+id: kuros-wiki-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/sidharthmirch/kuros-wiki
+---
+
+# Kuros Wiki Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: kuros-wiki-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/sidharthmirch/kuros-wiki
+---
+
+# Kuros Wiki Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: kuros-wiki-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/sidharthmirch/kuros-wiki
+---
+
+# Kuros Wiki Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: kuros-wiki-instinct-file-naming
+trigger: "When creating a new Swift file"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: sidharthmirch/kuros-wiki
+---
+
+# Kuros Wiki Instinct File Naming
+
+## Action
+
+Name the file using PascalCase
+
+## Evidence
+
+- Pattern in namingConventions.files: PascalCase
+
+---
+id: kuros-wiki-instinct-function-naming
+trigger: "When defining a new function in Swift"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: sidharthmirch/kuros-wiki
+---
+
+# Kuros Wiki Instinct Function Naming
+
+## Action
+
+Name the function using camelCase
+
+## Evidence
+
+- Pattern in namingConventions.functions: camelCase
+
+---
+id: kuros-wiki-instinct-class-naming
+trigger: "When defining a new class in Swift"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: sidharthmirch/kuros-wiki
+---
+
+# Kuros Wiki Instinct Class Naming
+
+## Action
+
+Name the class using PascalCase
+
+## Evidence
+
+- Pattern in namingConventions.classes: PascalCase
+
+---
+id: kuros-wiki-instinct-constant-naming
+trigger: "When declaring a constant in Swift"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: sidharthmirch/kuros-wiki
+---
+
+# Kuros Wiki Instinct Constant Naming
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE
+
+## Evidence
+
+- Pattern in namingConventions.constants: SCREAMING_SNAKE_CASE
+
+---
+id: kuros-wiki-instinct-import-style
+trigger: "When importing modules in Swift files"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: sidharthmirch/kuros-wiki
+---
+
+# Kuros Wiki Instinct Import Style
+
+## Action
+
+Use relative imports
+
+## Evidence
+
+- Pattern in importStyle: relative
+
+---
+id: kuros-wiki-instinct-export-style
+trigger: "When exporting modules or symbols"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: sidharthmirch/kuros-wiki
+---
+
+# Kuros Wiki Instinct Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in exportStyle: named
+
+---
+id: kuros-wiki-instinct-test-location
+trigger: "When adding or updating tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: sidharthmirch/kuros-wiki
+---
+
+# Kuros Wiki Instinct Test Location
+
+## Action
+
+Place test files in the 'Tests' folder, separate from source files
+
+## Evidence
+
+- Pattern in folderStructure.testLocation: separate
+- Common folder: Tests
+
+---
+id: kuros-wiki-instinct-commit-format
+trigger: "When writing a git commit message"
+confidence: 0.8
+domain: git
+source: repo-analysis
+source_repo: sidharthmirch/kuros-wiki
+---
+
+# Kuros Wiki Instinct Commit Format
+
+## Action
+
+Write a short, freeform message without a prefix, ideally under 20 characters
+
+## Evidence
+
+- commits.type: freeform
+- commits.prefixes: []
+- commits.averageLength: 19
+- Example: 'Add vault menu flow'
+
