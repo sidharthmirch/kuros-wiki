@@ -125,7 +125,17 @@ var META_SLUGS = {
 
 var GRAPH_COLORS = {
   Meta:        '#9a8a77',
+  Inbox:       '#b89b5a',
+  Note:        '#4f8a6d',
   Source:      '#c77a3c',
+  Thread:      '#4a7ca6',
+  Brief:       '#7a6ba3',
+  Session:     '#6f7f88',
+  Task:        '#8a7a4f',
+  Entity:      '#6b8fa3',
+  Claim:       '#a35f5f',
+  Question:    '#8d6ba3',
+  Draft:       '#9a8a77',
   Highlights:  '#8d6ba3',
   Concept:     '#4f8a6d',
   Discussion:  '#4a7ca6'
@@ -190,6 +200,7 @@ var NAV_HTML =
 
 function compile(sourceDir, outputDir) {
   mkdirp(outputDir);
+  _sourceRoot = sourceDir;
   initWikiName(sourceDir);
 
   var markdownFiles = findMarkdownFiles(sourceDir, outputDir);
@@ -212,6 +223,7 @@ function compile(sourceDir, outputDir) {
   var searchEntries = buildSearchEntries(pages);
   var previews = buildPreviewIndex(pages);
   // Pass 2: assemble final HTML for each page
+  removeStalePageHTML(outputDir, pages);
   renderAllPages(pages, backlinkMap, css, outputDir);
 
   // Write data files (shared across all pages via <script src>)
@@ -251,6 +263,7 @@ function compile(sourceDir, outputDir) {
 // Shared state for progressive mode — populated by scanPages(),
 // consumed by compilePage() and compileNextBatch().
 var _progressive = null;
+var _sourceRoot = null;
 
 // Extract [[wikilinks]] from raw markdown without rendering.
 function extractOutgoingLinks(source, knownSlugs, currentSlug) {
@@ -259,7 +272,7 @@ function extractOutgoingLinks(source, knownSlugs, currentSlug) {
   var re = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
   var match;
   while ((match = re.exec(source)) !== null) {
-    var slug = match[1].trim().toLowerCase().replace(/ /g, '-');
+    var slug = normalizeWikilinkTarget(match[1]);
     if (knownSlugs[slug] && slug !== currentSlug && !seen[slug]) {
       links.push(slug);
       seen[slug] = true;
@@ -285,6 +298,7 @@ function hasSourceInfobox(source) {
 // for the sidebar, search, graph, and backlinks. Returns page count.
 function scanPages(sourceDir, outputDir) {
   mkdirp(outputDir);
+  _sourceRoot = sourceDir;
   initWikiName(sourceDir);
 
   var markdownFiles = findMarkdownFiles(sourceDir, outputDir);
@@ -297,6 +311,7 @@ function scanPages(sourceDir, outputDir) {
   markdownFiles.forEach(function(filePath) {
     var slug = slugFromPath(filePath);
     var source = readFile(filePath);
+    var parsed = parseFrontmatter(source);
     var title = extractTitle(source) || slug;
     var outgoingLinks = extractOutgoingLinks(source, knownSlugs, slug);
     var infobox = hasSourceInfobox(source);
@@ -305,6 +320,7 @@ function scanPages(sourceDir, outputDir) {
       title: title,
       outgoingLinks: outgoingLinks,
       hasInfobox: infobox,
+      workspaceType: parsed.fm && parsed.fm.type,
       plainText: markdownToPlainText(source),
       richText: markdownToRichText(source),
       mtime: fileMtime(filePath),
@@ -327,6 +343,7 @@ function scanPages(sourceDir, outputDir) {
     ';var __previewData=' + JSON.stringify(previews) + ';');
   writeGraph(pages, css, outputDir);
   compileMap(sourceDir, outputDir);
+  removeStalePageHTML(outputDir, pages);
 
   // Copy static assets
   writeFile(outputDir + '/style.css', css);
@@ -411,8 +428,9 @@ function compilePage(slug) {
 function compileAdhoc(filePath, outputPath) {
   var source = readFile(filePath);
   if (!source) return false;
+  if (isUnacceptedGeneratedMarkdown(source)) return false;
 
-  var slug = filePath.split('/').pop().replace(/\.md$/i, '').toLowerCase().replace(/ /g, '-');
+  var slug = slugFromPath(filePath);
   var knownSlugs = _progressive ? _progressive.knownSlugs : {};
   var rendered = renderPageBody(source, knownSlugs, slug);
   var css = _progressive ? _progressive.css : (typeof bundledCSS !== 'undefined' ? bundledCSS : '');
@@ -431,6 +449,25 @@ function compileAdhoc(filePath, outputPath) {
 
   writeFile(outputPath, html);
   return true;
+}
+
+function removeStalePageHTML(outputDir, pages) {
+  if (typeof deleteFile === 'undefined') return;
+  var keep = {
+    'graph.html': true,
+    'map.html': true,
+    'map-3d.html': true
+  };
+  for (var slug in pages) {
+    keep[slug + '.html'] = true;
+  }
+  var entries = listDir(outputDir);
+  for (var i = 0; i < entries.length; i++) {
+    var entry = entries[i];
+    if (/\.html$/i.test(entry) && !keep[entry]) {
+      deleteFile(outputDir + '/' + entry);
+    }
+  }
 }
 
 // Compile up to `batchSize` pages from the pending queue. Returns the
@@ -570,6 +607,7 @@ function parseAllPages(markdownFiles, knownSlugs, cache) {
       html: rendered.html,
       subtitle: rendered.subtitle,
       hasInfobox: rendered.hasInfobox,
+      workspaceType: rendered.workspaceType,
       outgoingLinks: rendered.outgoingLinks,
       plainText: markdownToPlainText(source),
       richText: markdownToRichText(source),
@@ -659,7 +697,7 @@ function buildPreviewIndex(pages) {
       lead: (page.plainText || '').substring(0, 600),
       rich: page.richText || '',
       href: pageSlug + '.html',
-      type: classifyPage(pageSlug, page.hasInfobox)
+      type: classifyPage(pageSlug, page.hasInfobox, page.workspaceType)
     };
   }
   return previews;
@@ -680,7 +718,7 @@ function writeGraph(pages, css, outputDir) {
     nodes.push({
       id: pageSlug,
       label: pages[pageSlug].title,
-      type: classifyPage(pageSlug, pages[pageSlug].hasInfobox),
+      type: classifyPage(pageSlug, pages[pageSlug].hasInfobox, pages[pageSlug].workspaceType),
       href: pageSlug + '.html',
       words: wordCount
     });
@@ -711,8 +749,25 @@ function writeGraph(pages, css, outputDir) {
   return graphData;
 }
 
-function classifyPage(pageSlug, hasInfobox) {
+function classifyPage(pageSlug, hasInfobox, workspaceType) {
   if (META_SLUGS[pageSlug]) return 'Meta';
+  if (workspaceType) {
+    var normalized = String(workspaceType).toLowerCase();
+    var typeMap = {
+      inbox: 'Inbox',
+      note: 'Note',
+      source: 'Source',
+      thread: 'Thread',
+      brief: 'Brief',
+      session: 'Session',
+      task: 'Task',
+      entity: 'Entity',
+      claim: 'Claim',
+      question: 'Question',
+      draft: 'Draft'
+    };
+    if (typeMap[normalized]) return typeMap[normalized];
+  }
   if (!hasInfobox) return 'Concept';
   if (/_highlights$/.test(pageSlug)) return 'Highlights';
   if (/^slack[-_]/.test(pageSlug)) return 'Discussion';
@@ -876,7 +931,7 @@ function resolveWikilinks(html, knownSlugs, currentPageSlug) {
   var processed = html.replace(
     /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,
     function(_, rawTarget, displayText) {
-      var targetSlug = rawTarget.trim().toLowerCase().replace(/ /g, '-');
+      var targetSlug = normalizeWikilinkTarget(rawTarget);
       var label = displayText || rawTarget.trim();
       var exists = knownSlugs[targetSlug];
       var cssClass = exists ? 'wikilink' : 'wikilink missing';
@@ -1000,17 +1055,21 @@ function extractSourceInfobox(body) {
 //  Utilities
 // ============================================================
 
-function findMarkdownFiles(dir, outputDir) {
+function findMarkdownFiles(dir, outputDir, rootDir) {
+  rootDir = rootDir || dir;
   var results = [];
   var entries = listDir(dir);
   for (var i = 0; i < entries.length; i++) {
     var entry = entries[i];
     var entryPath = dir + '/' + entry;
-    if (entryPath === outputDir || entry.charAt(0) === '.' || entry === 'raw') continue;
+    if (entryPath === outputDir || entry.charAt(0) === '.' || entry === 'raw' || (dir === rootDir && entry === 'skills')) continue;
     if (/\.md$/i.test(entry)) {
-      results.push(entryPath);
+      var source = readFile(entryPath);
+      if (!isUnacceptedGeneratedMarkdown(source)) {
+        results.push(entryPath);
+      }
     } else if (!/\./.test(entry)) {
-      try { results = results.concat(findMarkdownFiles(entryPath, outputDir)); }
+      try { results = results.concat(findMarkdownFiles(entryPath, outputDir, rootDir)); }
       catch (e) {}
     }
   }
@@ -1024,8 +1083,38 @@ function buildSlugSet(filePaths) {
 }
 
 function slugFromPath(filePath) {
-  var filename = filePath.split('/').pop();
-  return filename.replace(/\.md$/i, '').toLowerCase().replace(/ /g, '-');
+  var relativePath = filePath;
+  if (_sourceRoot && filePath.indexOf(_sourceRoot + '/') === 0) {
+    relativePath = filePath.slice(_sourceRoot.length + 1);
+  }
+  return slugFromRelativePath(relativePath);
+}
+
+function slugFromRelativePath(relativePath) {
+  if (relativePath.indexOf('wiki/') === 0) {
+    return relativePath.split('/').pop().replace(/\.md$/i, '').toLowerCase().replace(/ /g, '-');
+  }
+  return relativePath
+    .replace(/\.md$/i, '')
+    .split('/')
+    .map(function(part) { return encodeURIComponent(part.toLowerCase()); })
+    .join('++');
+}
+
+function normalizeWikilinkTarget(target) {
+  var trimmed = target.trim();
+  if (trimmed.indexOf('/') !== -1) {
+    return slugFromRelativePath(trimmed);
+  }
+  return trimmed.toLowerCase().replace(/ /g, '-');
+}
+
+function isUnacceptedGeneratedMarkdown(source) {
+  var parsed = parseFrontmatter(source);
+  if (!parsed.fm) return false;
+  var accepted = parsed.fm.accepted;
+  if (accepted == null) return false;
+  return String(accepted).toLowerCase().replace(/^["']|["']$/g, '') === 'false';
 }
 
 function extractTitle(source) {
@@ -1064,6 +1153,7 @@ function renderPageBody(source, knownSlugs, slug) {
     html: renderedHtml,
     title: title,
     subtitle: subtitle,
+    workspaceType: parsed.fm && parsed.fm.type,
     hasInfobox: !!(parsed.fm || fmInfoboxHtml || (infobox && infobox.tableHtml)),
     outgoingLinks: linkResult.outgoingLinks
   };
@@ -1174,7 +1264,9 @@ function markdownToRichText(source) {
 
 var MAP_CATEGORY_MAP = {
   Discussion: 'question', Concept: 'concept', Entity: 'entity',
-  Meta: 'special', Source: 'source', Highlights: 'highlights'
+  Inbox: 'source', Note: 'concept', Thread: 'question', Brief: 'concept',
+  Session: 'special', Task: 'question', Claim: 'concept', Question: 'question',
+  Draft: 'special', Meta: 'special', Source: 'source', Highlights: 'highlights'
 };
 
 var MAP_SPECIAL_SLUGS = { whoami: true, log: true };
@@ -1417,6 +1509,7 @@ function saveCompileCache(cachePath, pages, markdownFiles) {
       outgoingLinks: page.outgoingLinks,
       plainText: page.plainText,
       richText: page.richText,
+      workspaceType: page.workspaceType,
       mtime: page.mtime
     };
   }

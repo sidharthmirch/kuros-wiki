@@ -30,5 +30,9 @@ let package = Package(
                 .copy("Resources/Wikiwise.icns"),
             ]
         ),
+        .testTarget(
+            name: "WikiwiseTests",
+            dependencies: ["Wikiwise"]
+        ),
     ]
 )

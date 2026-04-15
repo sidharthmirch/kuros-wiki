@@ -1,11 +1,7 @@
 import Foundation
 
-/// Creates a new wiki folder with the standard structure:
-///   raw/
-///   wiki/  (home.md, index.md, log.md)
-///   site/  (build.js, style.css, out/)
-///   .claude/skills/  (ingest, digest, lint, ingest-tweets, import-readwise, ...)
-///   CLAUDE.md
+/// Creates a new ambient research workspace with wiki-compatible
+/// markdown, canonical skills, provider bridges, and build tooling.
 enum WikiScaffold {
 
     enum ScaffoldError: Error {
@@ -22,11 +18,24 @@ enum WikiScaffold {
         // Create directory structure
         let dirs = [
             url.path,
+            url.appendingPathComponent("inbox").path,
+            url.appendingPathComponent("notes").path,
+            url.appendingPathComponent("sources").path,
+            url.appendingPathComponent("threads").path,
+            url.appendingPathComponent("briefs").path,
+            url.appendingPathComponent("sessions").path,
+            url.appendingPathComponent("tasks").path,
+            url.appendingPathComponent("entities").path,
+            url.appendingPathComponent("claims").path,
+            url.appendingPathComponent("questions").path,
+            url.appendingPathComponent("drafts").path,
             url.appendingPathComponent("raw").path,
             url.appendingPathComponent("wiki").path,
             url.appendingPathComponent("wiki/sources").path,
             url.appendingPathComponent("site").path,
             url.appendingPathComponent("site/out").path,
+            url.appendingPathComponent(".wikiwise").path,
+            url.appendingPathComponent("skills").path,
             url.appendingPathComponent(".claude").path,
             url.appendingPathComponent(".claude/skills").path,
         ]
@@ -69,13 +78,50 @@ enum WikiScaffold {
             }
         }
 
-        // Claude Code skills (each is a directory with SKILL.md)
-        let skillDirs = ["ingest", "digest", "lint", "ingest-tweets", "import-readwise", "fetch-readwise-document", "fetch-readwise-highlights", "upgrade"]
+        // Canonical skills plus provider-specific mirrors.
+        let skillDirs = [
+            "capture-source", "distill-note", "connect-thread", "build-brief",
+            "session-closeout", "contradiction-check", "daily-review", "research-sprint",
+            "ingest", "digest", "lint", "ingest-tweets", "import-readwise",
+            "fetch-readwise-document", "fetch-readwise-highlights", "upgrade"
+        ]
         for skill in skillDirs {
             let source = scaffoldDir.appendingPathComponent("skills/\(skill)")
-            let dest = url.appendingPathComponent(".claude/skills/\(skill)")
-            try fm.copyItem(at: source, to: dest)
+            guard fm.fileExists(atPath: source.path) else { continue }
+            try fm.copyItem(at: source, to: url.appendingPathComponent("skills/\(skill)"))
+            try fm.copyItem(at: source, to: url.appendingPathComponent(".claude/skills/\(skill)"))
         }
+
+        // Workspace state — the app owns this file, agents may read it.
+        let workspaceState = """
+        {
+          "jobs" : [],
+          "schemaVersion" : 1,
+          "settings" : {
+            "activeProvider" : "codex",
+            "ambientIntensity" : "quiet",
+            "backgroundProcessingEnabled" : true,
+            "customProviderCommand" : "",
+            "defaultActionLevel" : "suggest",
+            "showProvenance" : true
+          },
+          "suggestions" : []
+        }
+        """
+        try workspaceState.write(to: url.appendingPathComponent(".wikiwise/workspace.json"), atomically: true, encoding: .utf8)
+
+        let providerBridge = """
+        # Provider Bridge
+
+        Wikiwise owns the workspace model. The active provider supplies reasoning and execution through the terminal.
+
+        - Canonical skills: `skills/<name>/SKILL.md`
+        - Codex and Cursor-style agents: read `AGENTS.md` and `skills/`
+        - Claude Code-style agents: read `CLAUDE.md` and `.claude/skills/`
+
+        Generated artifacts should include `provider`, `skill`, `created_at`, `action_level`, and `accepted` in frontmatter.
+        """
+        try providerBridge.write(to: url.appendingPathComponent(".wikiwise/provider-bridge.md"), atomically: true, encoding: .utf8)
 
         // Claude Code settings.json to register skills
         let settings = """
@@ -130,7 +176,7 @@ enum WikiScaffold {
         try versionInfo.write(to: url.appendingPathComponent(".claude/scaffold-version"), atomically: true, encoding: .utf8)
 
         // .gitignore for compiled output
-        let gitignore = "site/out/\npublish.json\n.rebuild\n"
+        let gitignore = "site/out/\npublish.json\n.rebuild\n.wikiwise/ambient-index.md\n"
         try gitignore.write(to: url.appendingPathComponent(".gitignore"), atomically: true, encoding: .utf8)
     }
 }

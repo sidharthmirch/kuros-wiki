@@ -43,9 +43,9 @@ func scanOneLevel(at root: URL) -> [FileNode] {
     }
 
     // Folders first, then files — with custom sort order
-    let topFolders: [String] = ["wiki"]
-    let bottomFolders: [String] = ["raw", "site", "sources"]
-    let pinnedFiles: [String] = ["AGENTS.md", "CLAUDE.md"]
+    let topFolders: [String] = ["inbox", "notes", "sources", "threads", "briefs", "drafts", "sessions", "wiki"]
+    let bottomFolders: [String] = ["tasks", "entities", "claims", "questions", "raw", "site"]
+    let pinnedFiles: [String] = ["AGENTS.md", "CLAUDE.md", "README.workspace.md"]
 
     let folders = sorted.filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
     let allowedExtensions: Set<String> = ["md", "css", "js", "json", "html"]

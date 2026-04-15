@@ -84,11 +84,14 @@ final class FileWatcher {
             if path.hasPrefix(watcher.outputDir) { continue }
 
             let filename = (path as NSString).lastPathComponent
+            let relativePath = path.replacingOccurrences(of: watcher.watchedDir + "/", with: "")
 
             if filename == ".rebuild"
                 && path == watcher.watchedDir + "/.rebuild"
                 && (flag & kFSEventStreamEventFlagItemRemoved) == 0 {
                 watcher.pendingRebuild = true
+            } else if relativePath.hasPrefix(".") || relativePath.contains("/.") {
+                continue
             } else if path.hasSuffix(".css") {
                 watcher.pendingCSS = true
             } else if path.hasSuffix(".md") {

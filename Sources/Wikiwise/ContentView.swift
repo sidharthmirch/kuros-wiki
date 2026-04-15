@@ -135,12 +135,13 @@ struct ContentView: View {
     @State private var scrollFraction: Double = 0
     /// Holds a weak ref to the active WKWebView so we can query scroll position.
     @StateObject private var activeWebView = WebViewHolder()
-    @State private var rightSidebarTab: RightSidebarTab = .terminal
+    @State private var rightSidebarTab: RightSidebarTab = .ambient
     @State private var showRightSidebar: Bool = true
     @State private var showLeftSidebar: Bool = true
     @State private var rightSidebarWidth: CGFloat = 360
     @State private var leftSidebarWidth: CGFloat = 260
     @StateObject private var terminalSession = TerminalSession()
+    @StateObject private var workspaceStore = WorkspaceStore()
     @State private var isPublishing = false
     @State private var showPublishConfirm = false
     @State private var pendingSubdomain = ""
@@ -402,7 +403,11 @@ struct ContentView: View {
                         ),
                         selectedFileURL: selectedFileURL,
                         rootURL: rootURL,
-                        terminalSession: terminalSession
+                        terminalSession: terminalSession,
+                        workspaceStore: workspaceStore,
+                        onOpenFile: { url in
+                            navigateTo(url)
+                        }
                     )
                 }
             }
@@ -599,6 +604,35 @@ struct ContentView: View {
                     .help(publishConfig.map { "Last published: \($0.lastPublishedAt ?? "never")\n\($0.url)\n\u{2325}-click to change URL" } ?? "Publish wiki to wiki-wise.com")
 
                     Button {
+                        rightSidebarTab = .settings
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showRightSidebar = true
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Circle()
+                                .fill(workspaceStore.providerStatus.isAvailable ? Color.green : Color.orange)
+                                .frame(width: 7, height: 7)
+                            Text(workspaceStore.settings.activeProvider.displayName.uppercased())
+                        }
+                        .font(.system(size: 10, weight: .regular, design: .monospaced))
+                        .tracking(0.8)
+                        .foregroundStyle(Color.toolbarText)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color.clear)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 3)
+                                .strokeBorder(Color.sidebarRule, lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .help("AI provider settings")
+
+                    Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             showRightSidebar.toggle()
                         }
@@ -622,6 +656,21 @@ struct ContentView: View {
     private var sidebar: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                QuickCaptureBox(workspaceStore: workspaceStore) { url in
+                    navigateTo(url)
+                }
+
+                Rectangle().fill(Color.sidebarRule).frame(height: 1)
+                    .padding(.bottom, 12)
+
+                ResearchKindList(workspaceStore: workspaceStore) { url in
+                    navigateTo(url)
+                }
+                .padding(.bottom, 16)
+
+                Rectangle().fill(Color.sidebarRule).frame(height: 1)
+                    .padding(.bottom, 12)
+
                 Text("FILES")
                     .font(.system(size: 9, weight: .regular, design: .monospaced))
                     .tracking(1.6)
@@ -643,8 +692,18 @@ struct ContentView: View {
 
     private func folderTooltip(_ name: String) -> String {
         switch name {
+        case "inbox": return "Fast capture — rough notes, URLs, and excerpts waiting to be processed"
+        case "notes": return "Authored notes and structured observations"
+        case "sources": return "Captured source material and source summaries"
+        case "threads": return "Research threads that connect notes, sources, claims, and questions"
+        case "briefs": return "Synthesized research briefs"
+        case "sessions": return "Session closeouts and daily review notes"
+        case "tasks": return "Local research tasks and follow-up work"
+        case "entities": return "People, organizations, projects, places, and other entities"
+        case "claims": return "Atomic claims that should remain source-backed"
+        case "questions": return "Open research questions"
+        case "drafts": return "Reviewable AI drafts and suggestions"
         case "wiki": return "Wiki pages — your editable knowledge base"
-        case "sources": return "Source summaries — one page per ingested source"
         case "raw": return "Raw source documents — read-only originals"
         case "site": return "Build tooling and compiled HTML output"
         default: return name
@@ -855,8 +914,39 @@ struct ContentView: View {
     }
 
     private func slug(for url: URL) -> String {
-        url.deletingPathExtension().lastPathComponent
-            .lowercased().replacingOccurrences(of: " ", with: "-")
+        guard let root = rootURL,
+              url.path.hasPrefix(root.path + "/"),
+              url.pathExtension.lowercased() != "html" else {
+            return url.deletingPathExtension().lastPathComponent
+                .lowercased().replacingOccurrences(of: " ", with: "-")
+        }
+
+        let relativePath = url.path.replacingOccurrences(of: root.path + "/", with: "")
+        if relativePath.hasPrefix("wiki/") {
+            return url.deletingPathExtension().lastPathComponent
+                .lowercased().replacingOccurrences(of: " ", with: "-")
+        }
+        let pathWithoutExtension = stripKnownExtension(relativePath)
+        return pathWithoutExtension
+            .split(separator: "/")
+            .map { slugComponent(String($0)) }
+            .joined(separator: "++")
+    }
+
+    private func stripKnownExtension(_ path: String) -> String {
+        let lowercased = path.lowercased()
+        if lowercased.hasSuffix(".html") {
+            return String(path.dropLast(5))
+        }
+        if lowercased.hasSuffix(".md") {
+            return String(path.dropLast(3))
+        }
+        return path
+    }
+
+    private func slugComponent(_ value: String) -> String {
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789-._~")
+        return value.lowercased().addingPercentEncoding(withAllowedCharacters: allowed) ?? value.lowercased()
     }
 
     /// Map an HTML URL from the compiled wiki back to its markdown source file,
@@ -890,12 +980,28 @@ struct ContentView: View {
         // Check common locations: wiki/, raw/, then root
         let searchDirs = [
             dir.appendingPathComponent("wiki"),
+            dir.appendingPathComponent("inbox"),
+            dir.appendingPathComponent("notes"),
+            dir.appendingPathComponent("sources"),
+            dir.appendingPathComponent("threads"),
+            dir.appendingPathComponent("briefs"),
+            dir.appendingPathComponent("sessions"),
+            dir.appendingPathComponent("tasks"),
+            dir.appendingPathComponent("entities"),
+            dir.appendingPathComponent("claims"),
+            dir.appendingPathComponent("questions"),
+            dir.appendingPathComponent("drafts"),
             dir.appendingPathComponent("raw"),
             dir
         ]
         for searchDir in searchDirs {
-            guard let files = try? fm.contentsOfDirectory(at: searchDir, includingPropertiesForKeys: nil) else { continue }
-            for file in files where file.pathExtension == "md" {
+            guard let enumerator = fm.enumerator(
+                at: searchDir,
+                includingPropertiesForKeys: [.isRegularFileKey],
+                options: [.skipsHiddenFiles]
+            ) else { continue }
+            for case let file as URL in enumerator where file.pathExtension == "md" {
+                guard (try? file.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
                 if self.slug(for: file) == slug {
                     return file
                 }
@@ -928,6 +1034,7 @@ struct ContentView: View {
             fileWatcher?.stop()
             fileWatcher = nil
             rootURL = url
+            workspaceStore.open(rootURL: url)
             tree = scanOneLevel(at: url)
             selectedFileURL = nil
             fileContent = ""
@@ -1071,6 +1178,7 @@ struct ContentView: View {
 
             case .markdown(let changedPaths):
                 print("[watcher] Markdown changed: \(changedPaths.count) file(s)")
+                workspaceStore.handleMarkdownChanged(paths: changedPaths)
                 c.rescan()
                 // Only reload if the currently viewed file was one that changed
                 if let current = selectedFileURL,
@@ -1086,6 +1194,7 @@ struct ContentView: View {
                     try? FileManager.default.removeItem(at: root.appendingPathComponent(".rebuild"))
                 }
                 c.rescan()
+                workspaceStore.refresh()
                 c.invalidateAll()
                 if selectedFileURL != nil {
                     recompileCurrentPage(c)
@@ -1096,6 +1205,7 @@ struct ContentView: View {
             case .structure:
                 print("[watcher] Files added/deleted — rescanning")
                 c.rescan()
+                workspaceStore.refresh()
                 refreshTree()
                 // Don't recompile current page on structure changes —
                 // new/deleted files don't affect the page being viewed

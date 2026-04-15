@@ -108,6 +108,11 @@ final class Compiler {
         }
         jsContext.setObject(writeFile, forKeyedSubscript: "writeFile" as NSString)
 
+        let deleteFile: @convention(block) (String) -> Void = { path in
+            try? fm.removeItem(atPath: path)
+        }
+        jsContext.setObject(deleteFile, forKeyedSubscript: "deleteFile" as NSString)
+
         // listDir(path) → [String]
         let listDir: @convention(block) (String) -> [String] = { path in
             (try? fm.contentsOfDirectory(atPath: path).filter { !$0.hasPrefix(".") }) ?? []

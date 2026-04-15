@@ -1,8 +1,10 @@
 import SwiftUI
 
 enum RightSidebarTab: String, CaseIterable {
+    case ambient = "AMBIENT"
     case info = "INFO"
     case terminal = "TERMINAL"
+    case settings = "SETTINGS"
 }
 
 struct RightSidebar: View {
@@ -13,6 +15,8 @@ struct RightSidebar: View {
     let selectedFileURL: URL?
     let rootURL: URL?
     let terminalSession: TerminalSession
+    @ObservedObject var workspaceStore: WorkspaceStore
+    let onOpenFile: (URL) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,12 +25,18 @@ struct RightSidebar: View {
             Rectangle().fill(Color.sidebarRule).frame(height: 1)
 
             ZStack {
+                ambientTab
+                    .opacity(activeTab == .ambient ? 1 : 0)
+                    .allowsHitTesting(activeTab == .ambient)
                 infoTab
                     .opacity(activeTab == .info ? 1 : 0)
                     .allowsHitTesting(activeTab == .info)
                 terminalTab
                     .opacity(activeTab == .terminal ? 1 : 0)
                     .allowsHitTesting(activeTab == .terminal)
+                settingsTab
+                    .opacity(activeTab == .settings ? 1 : 0)
+                    .allowsHitTesting(activeTab == .settings)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -103,6 +113,14 @@ struct RightSidebar: View {
     }
 
     // MARK: - Info Tab
+
+    private var ambientTab: some View {
+        AmbientRailView(
+            workspaceStore: workspaceStore,
+            selectedFileURL: selectedFileURL,
+            onOpenFile: onOpenFile
+        )
+    }
 
     private var infoTab: some View {
         ScrollView {
@@ -201,10 +219,28 @@ struct RightSidebar: View {
     // MARK: - Terminal Tab
 
     private var terminalTab: some View {
-        TerminalEmbed(session: terminalSession)
-            .padding(.leading, 8)
-            .padding(.top, 4)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Launch \(workspaceStore.settings.activeProvider.displayName)")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.infoValue)
+                Text(workspaceStore.providerStatus.command.isEmpty ? "Configure a custom provider command in Settings." : workspaceStore.providerStatus.command)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(Color.sidebarTextMuted)
+                    .textSelection(.enabled)
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 10)
+
+            TerminalEmbed(session: terminalSession)
+                .padding(.leading, 8)
+                .padding(.top, 4)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var settingsTab: some View {
+        ProviderSettingsView(workspaceStore: workspaceStore)
     }
 
     // MARK: - Helpers

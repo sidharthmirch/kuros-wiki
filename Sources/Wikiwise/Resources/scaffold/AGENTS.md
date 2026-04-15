@@ -1,98 +1,82 @@
 # Agent Instructions
 
-This is a wiki maintained by an LLM agent. Read `CLAUDE.md` for the full schema, conventions, and workflows.
+This is a local-first ambient research workspace. Wikiwise owns the markdown workspace model; the active AI provider supplies reasoning and execution through the terminal.
 
-This file exists so that **any** LLM coding agent — Claude Code, OpenAI Codex, Cursor, Windsurf, Copilot CLI, or others — can operate this wiki. If your agent reads `CLAUDE.md` natively (Claude Code does), great. If not, everything you need is here plus the skill files referenced below.
+Read `CLAUDE.md` for the full schema when available. This file exists so Codex, Claude Code, Cursor-compatible agents, and other tools can work from the same rules.
 
-## Quick reference
+## Layout
 
-- **`raw/`** — immutable source documents. Read-only.
-- **`wiki/`** — LLM-maintained markdown pages. All edits here. Source summaries go in `wiki/sources/`.
-- **`site/`** — build tooling and compiled output. `site/out/` is auto-generated.
-- **`CLAUDE.md`** — the wiki schema. Your source of truth for how this wiki works.
+- `inbox/` — quick captures, rough thoughts, URLs, and excerpts.
+- `notes/` — authored notes and durable observations.
+- `sources/` — captured source records and source summaries.
+- `threads/` — evolving research threads connecting notes, claims, questions, and sources.
+- `briefs/` — synthesized research artifacts.
+- `sessions/` — session closeouts and daily reviews.
+- `tasks/` — research tasks and follow-ups.
+- `entities/` — people, organizations, projects, places, and other entities.
+- `claims/` — atomic source-backed claims.
+- `questions/` — open research questions.
+- `drafts/` — reviewable AI drafts and suggestions.
+- `wiki/` — compatibility pages for the original Wikiwise viewer.
+- `raw/` — immutable raw source material.
+- `site/` — build tooling and compiled output.
+- `.wikiwise/` — app-owned settings, provider bridge, and ambient job state.
+- `skills/` — canonical skill instructions.
+- `.claude/skills/` — Claude Code bridge copied from canonical skills.
 
-## Key conventions
+## Provider Model
 
-- Link with `[[wikilinks]]`. Bare filename, no path.
-- Cite sources inline: `([[source-slug]])`.
-- Wiki pages are short blog posts, not reference dumps. TL;DR first, then the argument.
-- After any ingest, update `wiki/index.md` and append to `wiki/log.md`.
-- Log entry format: `## [YYYY-MM-DD HH:MM] <op> | <title>`.
-- Voice: opinionated, direct, declarative. Most pages under 800 words.
+The workspace must remain provider-agnostic.
 
-## Tool mapping
+- App-owned model: notes, sources, threads, briefs, sessions, tasks, entities, claims, questions, drafts, jobs, provenance.
+- Provider-owned execution: reasoning, source distillation, synthesis, and edits requested through terminal workflows.
+- Canonical skills: `skills/<skill-name>/SKILL.md`.
+- Claude bridge: `.claude/skills/<skill-name>/SKILL.md`.
+- Provider state: `.wikiwise/workspace.json`.
 
-Skills reference Claude Code tool names. If you're running a different agent, use the equivalent:
+When creating generated artifacts, include frontmatter:
 
-| Claude Code | Codex CLI | Copilot CLI | Generic |
-|---|---|---|---|
-| `Read` | `read_file` | `read_file` | read a file |
-| `Write` | `write_file` | `write_file` | write/create a file |
-| `Edit` | `write_file` (partial) | `patch` | edit part of a file |
-| `Bash(*)` | `shell` | `run_command` | run a shell command |
-| `Glob` | `shell` + `find` | `run_command` + `find` | find files by pattern |
-| `Grep` | `shell` + `grep`/`rg` | `run_command` + `grep` | search file contents |
-| `Agent` (subagent) | N/A | N/A | do it inline |
+```yaml
+provider: codex
+skill: distill-note
+action_level: suggest
+created_at: 2026-04-13T12:00:00Z
+accepted: false
+```
 
-When a skill says `allowed-tools: Bash(*) Read Write Edit Glob Grep`, that's Claude Code syntax. In other agents, just use whatever tools let you run shell commands and read/write files.
+## Core Rules
+
+- Do not silently overwrite authored notes.
+- Put proposed outputs in `drafts/`, `briefs/`, or `sessions/` with `accepted: false` unless the user approves direct edits.
+- Preserve provenance: provider, skill, date, source path, and action level.
+- Use `[[wikilinks]]` to connect workspace items.
+- Cite sources when making claims.
+- Keep raw source material immutable.
+- Prefer small durable notes and explicit links over long summary dumps.
 
 ## Skills
 
-Detailed skill files live in `.claude/skills/<name>/SKILL.md`. **Read the skill file before running a workflow** — it contains step-by-step instructions, shell commands, and rules.
+Read the relevant skill file before running a workflow.
 
-### How to use skills
+| Skill | Purpose |
+| --- | --- |
+| `capture-source` | Capture URL, pasted text, excerpts, or documents with provenance |
+| `distill-note` | Turn rough notes into structured reviewable notes |
+| `connect-thread` | Link notes, sources, entities, claims, and questions into threads |
+| `build-brief` | Generate a reviewable brief from a thread |
+| `session-closeout` | Summarize a work session and next actions |
+| `contradiction-check` | Detect conflicting or stale claims |
+| `daily-review` | Produce a daily digest |
+| `research-sprint` | Run a focused research pass |
 
-- **Claude Code**: Skills are auto-discovered from `.claude/skills/`. Invoke with `/ingest`, `/lint`, etc.
-- **Codex / other agents**: Read the skill file manually — e.g., read `.claude/skills/ingest/SKILL.md` — then follow its instructions. The skill files are plain markdown with step-by-step workflows.
+Legacy wiki skills may also be present for import, ingest, lint, Readwise, and upgrade workflows.
 
-### Skill catalog
+## Live Viewer
 
-| Skill | Path | Purpose |
-|---|---|---|
-| **ingest** | `.claude/skills/ingest/SKILL.md` | Add a source to the wiki — save raw, create summary page, propagate claims, update index and log |
-| **digest** | `.claude/skills/digest/SKILL.md` | Deep-propagate ingested sources across the wiki — update concept/entity pages, flag contradictions, create new pages where warranted |
-| **lint** | `.claude/skills/lint/SKILL.md` | Health-check for contradictions, orphan pages, broken links, stale claims, missing cross-links |
-| **ingest-tweets** | `.claude/skills/ingest-tweets/SKILL.md` | Search Twitter/X for tweets on a topic using browser automation, extract content, and ingest into the wiki |
-| **import-readwise** | `.claude/skills/import-readwise/SKILL.md` | Search and import documents/highlights from Readwise (orchestrator — delegates to fetch skills below) |
-| **fetch-readwise-document** | `.claude/skills/fetch-readwise-document/SKILL.md` | Stream a Reader document into `raw/` without loading the body into context |
-| **fetch-readwise-highlights** | `.claude/skills/fetch-readwise-highlights/SKILL.md` | Vector-search highlights, group by parent doc, write to `raw/` |
+Wikiwise watches this folder. Markdown and CSS changes trigger rebuilds. If the viewer misses a bulk update, touch `.rebuild`:
 
-### Workflow cheat sheet
-
-These are abbreviated versions. Read the full skill files for details.
-
-**Ingest a source:**
-1. Save raw source to `raw/<slug>.md`
-2. Create source-summary page at `wiki/sources/<slug>.md` with frontmatter (`type`, `date`, `author`, `url`, `raw`)
-3. Propagate claims into concept/entity pages with citations `([[slug]])`
-4. **Cross-link aggressively** — add `[[wikilinks]]` FROM existing pages TO new pages (edit 2-3 related pages), and FROM new pages TO existing ones. No orphans.
-5. Update `wiki/index.md` — add new pages with one-line summaries
-6. Update `wiki/home.md` if the source changes the narrative
-7. Append to `wiki/log.md` — `## [YYYY-MM-DD HH:MM] ingest | <title>`
-
-**Lint the wiki:**
-1. Scan `wiki/` for contradictions, orphan pages, broken `[[wikilinks]]`, stale claims, missing cross-links
-2. Report findings grouped by category
-3. Append to `wiki/log.md` — `## [YYYY-MM-DD HH:MM] lint | <summary>`
-
-**Ingest tweets:**
-1. Open Twitter/X search via browser automation
-2. Scroll and extract 10-20 tweets (author, date, text, engagement, URL)
-3. Present to user for curation
-4. Save to `raw/tweets_<topic>_<date>.md`
-5. Chain into ingest — source-summary uses `type: tweets` and synthesizes the discourse
-
-## Running your agent
-
-WikiWise includes a built-in terminal in the right sidebar — click the terminal icon in the toolbar. You can also run your agent in any external terminal pointed at this folder.
-
-```bash
-# Claude Code
-claude
-
-# Codex
-codex
-
-# Any agent — just cd to the wiki folder first
-cd /path/to/your-wiki
+```sh
+touch .rebuild
 ```
+
+The current active file is written to `.claude/active-file` for compatible agents.

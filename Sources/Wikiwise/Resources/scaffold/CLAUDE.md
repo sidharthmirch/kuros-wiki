@@ -1,77 +1,85 @@
-# {{WIKI_NAME}} — schema
+# {{WIKI_NAME}} — ambient research schema
 
-A personal wiki maintained by an LLM agent, following the [llm-wiki pattern](llm-wiki.md) by Andrej Karpathy. Read `llm-wiki.md` for the full pattern description — this schema is our implementation of it.
+This is a local-first ambient research workspace. It keeps the original Wikiwise markdown/wiki strengths, but the primary model is now note-first research: captures, notes, sources, threads, briefs, sessions, tasks, entities, claims, questions, and drafts.
+
+## Product Shape
+
+Wikiwise is the workbench. The AI provider is swappable.
+
+- The app owns the workspace model, file layout, ambient jobs, and provenance.
+- The provider supplies reasoning and execution through terminal workflows.
+- Skills define stable workflows independent of provider.
+- Generated artifacts are reviewable unless explicitly accepted.
 
 ## Layout
 
-- `llm-wiki.md` — Karpathy's pattern description (reference, read-only).
-- `raw/` — immutable source documents. Read-only for the LLM.
-- `wiki/` — LLM-maintained markdown. All edits here. Categories live in `index.md`, not in the filesystem.
-  - `home.md` — human entry point. Narrative overview, current state of thinking. **Always include visuals** — inline SVG concept maps showing how ideas connect, diagrams of key frameworks, or relationship graphs. The home page should feel rich and visual, not just a wall of text.
-  - `index.md` — agent catalog. Flat list of every page with a one-line summary, grouped by category.
-  - `log.md` — append-only chronological log.
-  - `sources/` — source-summary pages (one per ingested source).
-- `site/` — build tooling and compiled output.
-  - `site/out/` — compiled HTML (auto-generated, do not edit).
-  - `site/build.js` — the wiki compiler (markdown to HTML).
-  - `site/style.css` — the wiki theme.
+- `inbox/` — rough captures, URLs, excerpts, and unprocessed thoughts.
+- `notes/` — authored notes and structured observations.
+- `sources/` — source records and source summaries.
+- `threads/` — research threads connecting notes, claims, questions, and sources.
+- `briefs/` — synthesized research artifacts.
+- `sessions/` — closeouts, recaps, and daily reviews.
+- `tasks/` — research tasks and follow-ups.
+- `entities/` — entities worth tracking.
+- `claims/` — atomic source-backed claims.
+- `questions/` — open questions.
+- `drafts/` — AI-generated proposals with review status.
+- `wiki/` — compatibility pages for the original compiled wiki view.
+- `raw/` — immutable source material.
+- `site/` — compiler assets and generated HTML.
+- `skills/` — canonical skills.
+- `.claude/skills/` — Claude Code bridge.
+- `.wikiwise/` — app-owned provider state and ambient job records.
 
-## Conventions
+## Frontmatter
 
-- Link with Obsidian-style `[[wikilinks]]`. Bare filename, no path.
-- Every claim should cite a source: `([[source-slug]])`.
-- Source-summary pages start with a frontmatter block: `type`, `date`, `author`, `url`, `raw` (path into `raw/`).
-- Log entries prefix: `## [YYYY-MM-DD HH:MM] <op> | <title>` (local time).
+Every generated artifact should include:
 
-## Images
+```yaml
+title:
+type: note
+status: active
+provider: codex
+skill: distill-note
+action_level: suggest
+created_at:
+updated_at:
+accepted: false
+```
 
-Two ways to include images in wiki pages:
+Use `accepted: true` only for authored notes or user-approved outputs.
 
-1. **External URLs** — link directly: `![alt](https://example.com/image.png)`. Works in the app and in published wikis.
-2. **Local images** — save the file to `wiki/assets/` and reference it as `![alt](assets/filename.png)`. The build system copies `wiki/assets/` → `site/out/assets/` automatically. Use this for images you want to keep with the wiki (screenshots, diagrams, etc.).
+## Writing Style
 
-## Writing style
+- TL;DR first for notes and briefs.
+- Direct, plain, evidence-aware.
+- Shorter is better when links carry the graph.
+- Use `[[wikilinks]]` for local relationships.
+- Cite sources for claims.
+- Mark uncertainty clearly.
 
-Wiki pages are short blog posts, not reference dumps. Write for a human reader who reads top-to-bottom.
+## Ambient Modes
 
-1. **TL;DR first** — one or two sentences that give away the answer.
-2. **What it means** — 2-4 short narrative paragraphs.
-3. **The argument** — reasoning, evidence, counter-arguments, organized by idea.
-4. **Extras** (optional) — loose threads, adjacent ideas.
+The ambient layer can:
 
-Voice: opinionated, direct, declarative. Length: most pages under 800 words.
+- Suggest: links, tags, entities, threads, questions, next actions.
+- Draft: summaries, briefs, closeouts, structured notes.
+- Maintain: indexes, backlinks, digests, stale-claim reports.
 
-## Live viewer
+Do not perform destructive edits silently. Draft first.
 
-The user is reading this wiki in the Wikiwise app, which watches the project directory for changes. When you edit `.md` or `.css` files, the app detects the change via FSEvents and automatically recompiles and refreshes the page the user is viewing.
+## Provider Switching
 
-**If auto-refresh doesn't pick up your changes**, touch the `.rebuild` trigger file at the project root:
+Do not encode provider-specific assumptions into notes. Provider-specific commands and bridges belong in `.wikiwise/provider-bridge.md`, `.wikiwise/workspace.json`, and adapter-specific folders such as `.claude/skills/`.
+
+Artifacts should always say which provider and skill produced them.
+
+## Live Viewer
+
+Wikiwise watches the project directory and rebuilds markdown output. If auto-refresh misses changes:
 
 ```sh
 touch .rebuild
 ```
 
-This forces a full recompile of every page and refreshes the current view. The app deletes the file after processing, so it's safe to touch repeatedly. Use this after bulk operations (many files changed at once) or if you suspect the watcher missed something.
-
-**What the user sees:** `.claude/active-file` contains the relative path of the page currently open in the app. Read it to know what the user is looking at.
-
-## Integration — the #1 rule
-
-**Every page must be woven into the wiki graph.** A page with no inbound links is invisible. A page with no outbound links is a dead end. Both are failures. When you create or update any page:
-
-1. **Link IN** — find 2-3 existing pages that should reference the new page and add `[[wikilinks]]` to them. Read `index.md` to find related pages, then edit them.
-2. **Link OUT** — the new page itself should link to every related concept/entity/source already in the wiki.
-3. **Update `home.md`** — if the new material changes the big picture, revise `home.md`. Don't wait.
-4. **Update `index.md`** — every page must appear here with a one-line summary.
-
-**The test:** after any operation, a reader starting from `home.md` should be able to reach the new content within 2 clicks. If they can't, you haven't integrated it.
-
-## Workflows
-
-**Ingest a new source.** Read it. Create/update the source-summary page at `wiki/sources/<slug>.md`. Then do the hard part: propagate claims into existing concept/entity pages — and add backlinks FROM those pages TO the new source and any new concept pages. Don't just create pages; stitch them into the web. Update `index.md`. Append to `log.md`. Update `home.md` if the new source shifts the narrative.
-
-**Keep `home.md` alive.** Update `home.md` as soon as the first few sources are ingested — don't wait until the wiki is "done." Every time new sources change the picture, revise `home.md` to reflect the current state of thinking. The home page is the wiki's front door; a stale home page makes the whole wiki feel abandoned.
-
-**Query.** Read `index.md` first. Drill into pages. If the answer is non-trivial, file it back as a new page.
-
-**Lint.** Scan for contradictions, orphans, stale claims, missing cross-links.
+The active file path is available at `.claude/active-file`.
