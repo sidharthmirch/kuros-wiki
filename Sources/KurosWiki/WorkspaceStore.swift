@@ -35,6 +35,17 @@ final class WorkspaceStore: ObservableObject {
         }
     }
 
+    func closeWorkspace() {
+        rootURL = nil
+        settings = .default
+        items = []
+        suggestions = []
+        jobs = []
+        profiles = [WorkspaceProfile(id: WorkspaceProfile.defaultID)]
+        activeProfileID = WorkspaceProfile.defaultID
+        lastError = nil
+    }
+
     func refresh() {
         guard let rootURL else {
             items = []
@@ -486,10 +497,9 @@ final class WorkspaceStore: ObservableObject {
         try fm.createDirectory(at: canonicalRoot, withIntermediateDirectories: true)
         try fm.createDirectory(at: claudeRoot, withIntermediateDirectories: true)
 
-        let skillFolders = (try? fm.contentsOfDirectory(at: scaffoldSkillsURL, includingPropertiesForKeys: [.isDirectoryKey])) ?? []
-        for skillURL in skillFolders {
+        for name in ScaffoldSkillCatalog.currentSkillDirs {
+            let skillURL = scaffoldSkillsURL.appendingPathComponent(name)
             guard (try? skillURL.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else { continue }
-            let name = skillURL.lastPathComponent
             let canonicalDest = canonicalRoot.appendingPathComponent(name)
             let claudeDest = claudeRoot.appendingPathComponent(name)
             if !fm.fileExists(atPath: canonicalDest.path) {

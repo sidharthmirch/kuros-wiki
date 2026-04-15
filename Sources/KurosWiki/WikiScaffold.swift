@@ -79,14 +79,7 @@ enum WikiScaffold {
         }
 
         // Canonical skills plus provider-specific mirrors.
-        let skillDirs = [
-            "capture-source", "distill-note", "connect-thread", "build-brief",
-            "session-closeout", "contradiction-check", "daily-review", "research-sprint",
-            "whoami",
-            "ingest", "digest", "lint", "ingest-tweets", "import-readwise",
-            "fetch-readwise-document", "fetch-readwise-highlights", "upgrade"
-        ]
-        for skill in skillDirs {
+        for skill in ScaffoldSkillCatalog.currentSkillDirs {
             let source = scaffoldDir.appendingPathComponent("skills/\(skill)")
             guard fm.fileExists(atPath: source.path) else { continue }
             try fm.copyItem(at: source, to: url.appendingPathComponent("skills/\(skill)"))

@@ -25,10 +25,10 @@ Open {{WIKI_PATH}} in Cursor
 
 Once your agent is running, try:
 
-- **Import from Readwise:** `/import-readwise`
-- **Ingest an article:** "Ingest this article: [paste URL]"
-- **Import existing files:** "Ingest the files in ~/my-notes/ into this wiki"
-- **Start from a topic:** "Start a wiki about [your topic]"
+- **Capture a source:** "Capture this source: [paste URL]"
+- **Distill a note:** "Use distill-note on inbox/my-rough-note.md"
+- **Connect a thread:** "Use connect-thread to link my notes about [topic]"
+- **Run a research sprint:** "Use research-sprint for [topic]"
 
 Your wiki grows every time you add a source. The agent reads it, creates summary pages, and links them to everything else you know.
 
