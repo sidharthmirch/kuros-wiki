@@ -1,0 +1,48 @@
+{
+  "conflicts": [],
+  "generated_at": "2026-04-15T01:43:49Z",
+  "sources": {
+    "ambient": {
+      "baseline_sha": "37d16fa30ae48013ba9c3b648b8c4c647424ce3c",
+      "branch": "main",
+      "changed_files": [],
+      "conflict_files": [],
+      "escalated_files": [],
+      "head": {
+        "date": "2026-04-14T05:03:57Z",
+        "message": "Transform Wikiwise into ambient research workbench",
+        "sha": "37d16fa30ae48013ba9c3b648b8c4c647424ce3c"
+      },
+      "new_commits": [],
+      "repo": "saivishnu2299/ambient-wikiwise",
+      "scan_status": "no_changes",
+      "tracked_files": [],
+      "warnings": []
+    },
+    "wikiwise": {
+      "baseline_sha": "45579808cf44598ea353fd6703e78f247149f004",
+      "branch": "main",
+      "changed_files": [],
+      "conflict_files": [],
+      "escalated_files": [],
+      "head": {
+        "date": "2026-04-14T20:58:23Z",
+        "message": "Add LaTeX math rendering via KaTeX",
+        "sha": "45579808cf44598ea353fd6703e78f247149f004"
+      },
+      "new_commits": [],
+      "repo": "TristanH/wikiwise",
+      "scan_status": "no_changes",
+      "tracked_files": [],
+      "warnings": []
+    }
+  },
+  "summary": {
+    "changes_detected": false,
+    "total_conflicts": 0,
+    "total_escalated_files": 0,
+    "total_new_commits": 0,
+    "total_tracked_files": 0
+  },
+  "version": 1
+}

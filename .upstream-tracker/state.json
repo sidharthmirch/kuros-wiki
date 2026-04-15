@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "updated_at": "2026-04-14T20:58:23Z",
+  "sources": {
+    "wikiwise": {
+      "last_seen_sha": "45579808cf44598ea353fd6703e78f247149f004",
+      "last_seen_at": "2026-04-14T20:58:23Z",
+      "last_scan_status": "initialized"
+    },
+    "ambient": {
+      "last_seen_sha": "37d16fa30ae48013ba9c3b648b8c4c647424ce3c",
+      "last_seen_at": "2026-04-14T05:03:57Z",
+      "last_scan_status": "initialized"
+    }
+  }
+}

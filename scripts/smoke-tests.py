@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import json
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
 SKILLS = [
     "capture-source",
     "distill-note",
@@ -54,11 +56,21 @@ def test_site_build_excludes_agent_skills():
     assert_true("dir === rootDir && entry === 'skills'" in build_js, "site build should exclude only top-level skills/")
 
 
+def test_upstream_tracker_config_state_schema():
+    from upstream_tracker import load_structured_file, validate_config, validate_state
+
+    config = load_structured_file(ROOT / ".upstream-tracker" / "config.yml")
+    state = load_structured_file(ROOT / ".upstream-tracker" / "state.json")
+    validate_config(config)
+    validate_state(state, config)
+
+
 def main():
     test_skill_scaffold()
     test_workspace_state_template_is_valid_json()
     test_graph_knows_research_types()
     test_site_build_excludes_agent_skills()
+    test_upstream_tracker_config_state_schema()
     print("smoke tests passed")
 
 

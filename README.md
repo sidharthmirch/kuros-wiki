@@ -58,6 +58,26 @@ my-wiki/
 
 See [`Sources/KurosWiki/Resources/scaffold/`](Sources/KurosWiki/Resources/scaffold/) for the full template — this is what gets copied when you create a new wiki, including the schema (`CLAUDE.md`), agent skills, and seed pages.
 
+## Upstream tracking
+
+This repo includes an upstream tracker that monitors:
+
+- `TristanH/wikiwise` (`main`)
+- `saivishnu2299/ambient-wikiwise` (`main`)
+
+It generates change reports and suggested integration commands under `.upstream-tracker/reports/`, then updates a rolling automation PR.
+
+Manual run:
+
+```bash
+python3 scripts/upstream_tracker.py run \
+  --config .upstream-tracker/config.yml \
+  --state .upstream-tracker/state.json \
+  --out-dir .upstream-tracker/reports
+```
+
+See [`docs/upstream-tracking.md`](docs/upstream-tracking.md) for ownership rules, conflict behavior, and workflow details.
+
 ## License
 
 GPLv3 — see [LICENSE](LICENSE)

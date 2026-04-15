@@ -1,0 +1,124 @@
+name: Upstream Tracker
+
+on:
+  schedule:
+    - cron: "15 3 * * *"
+  workflow_dispatch:
+    inputs:
+      force_pr:
+        description: "Create/update PR even when no upstream changes"
+        required: false
+        default: false
+        type: boolean
+      dry_run:
+        description: "Run tracker without updating state/PR"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  upstream-tracker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install pyyaml
+
+      - name: Run tracker
+        id: tracker
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          set +e
+          DRY_FLAG=""
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$INPUT_DRY_RUN" = "true" ]; then
+            DRY_FLAG="--dry-run"
+          fi
+
+          python3 scripts/upstream_tracker.py run \
+            --config .upstream-tracker/config.yml \
+            --state .upstream-tracker/state.json \
+            --out-dir .upstream-tracker/reports \
+            $DRY_FLAG
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+
+          if [ "$code" -ge 10 ]; then
+            echo "tracker failed with hard error code $code"
+            exit "$code"
+          fi
+
+          if [ "$code" -eq 2 ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build PR body
+        if: ${{ steps.tracker.outputs.exit_code != '' }}
+        run: |
+          {
+            cat .upstream-tracker/reports/latest.md
+            echo
+            echo "---"
+            echo
+            cat .upstream-tracker/reports/suggestions.md
+          } > .upstream-tracker/reports/pr-body.md
+
+      - name: Decide PR action
+        id: decision
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_FORCE_PR: ${{ github.event.inputs.force_pr }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
+          HAS_CHANGES: ${{ steps.tracker.outputs.has_changes }}
+        run: |
+          should_pr=false
+
+          if [ "$EVENT_NAME" != "workflow_dispatch" ]; then
+            if [ "$HAS_CHANGES" = "true" ]; then
+              should_pr=true
+            fi
+          else
+            if [ "$INPUT_DRY_RUN" != "true" ] && { [ "$HAS_CHANGES" = "true" ] || [ "$INPUT_FORCE_PR" = "true" ]; }; then
+              should_pr=true
+            fi
+          fi
+
+          echo "should_pr=$should_pr" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update PR
+        if: ${{ steps.decision.outputs.should_pr == 'true' }}
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: automation/upstream-tracker
+          base: main
+          title: chore: upstream tracking report
+          commit-message: "chore: update upstream tracking artifacts"
+          add-paths: |
+            .upstream-tracker/**
+          labels: |
+            automation
+            upstream-tracking
+          body-path: .upstream-tracker/reports/pr-body.md
+
+      - name: No changes
+        if: ${{ steps.decision.outputs.should_pr != 'true' }}
+        run: echo "No upstream changes detected."

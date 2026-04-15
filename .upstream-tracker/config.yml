@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "sources": {
+    "wikiwise": {
+      "repo": "TristanH/wikiwise",
+      "branch": "main",
+      "enabled": true
+    },
+    "ambient": {
+      "repo": "saivishnu2299/ambient-wikiwise",
+      "branch": "main",
+      "enabled": true
+    }
+  },
+  "ownership_rules": [
+    {
+      "pattern": "Sources/KurosWiki/Ambient*.swift",
+      "owner": "ambient",
+      "mode": "track"
+    },
+    {
+      "pattern": "Sources/KurosWiki/Workspace*.swift",
+      "owner": "ambient",
+      "mode": "track"
+    },
+    {
+      "pattern": "Sources/KurosWiki/RightSidebar.swift",
+      "owner": "ambient",
+      "mode": "track"
+    },
+    {
+      "pattern": "Sources/KurosWiki/Resources/scaffold/skills/capture-source/**",
+      "owner": "ambient",
+      "mode": "track"
+    },
+    {
+      "pattern": "Sources/KurosWiki/Resources/scaffold/skills/connect-thread/**",
+      "owner": "ambient",
+      "mode": "track"
+    },
+    {
+      "pattern": "Sources/KurosWiki/Resources/scaffold/skills/distill-note/**",
+      "owner": "ambient",
+      "mode": "track"
+    },
+    {
+      "pattern": "Sources/KurosWiki/Resources/scaffold/skills/build-brief/**",
+      "owner": "ambient",
+      "mode": "track"
+    },
+    {
+      "pattern": "Sources/KurosWiki/Resources/scaffold/skills/session-closeout/**",
+      "owner": "ambient",
+      "mode": "track"
+    },
+    {
+      "pattern": "Sources/KurosWiki/Resources/scaffold/skills/contradiction-check/**",
+      "owner": "ambient",
+      "mode": "track"
+    },
+    {
+      "pattern": "Sources/KurosWiki/Resources/scaffold/skills/daily-review/**",
+      "owner": "ambient",
+      "mode": "track"
+    },
+    {
+      "pattern": "Sources/KurosWiki/Resources/scaffold/skills/research-sprint/**",
+      "owner": "ambient",
+      "mode": "track"
+    }
+  ],
+  "settings": {
+    "max_commits": 50,
+    "report_limit": 200,
+    "default_owner": "wikiwise"
+  }
+}
