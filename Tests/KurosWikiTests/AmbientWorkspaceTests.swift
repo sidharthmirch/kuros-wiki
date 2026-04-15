@@ -247,7 +247,7 @@ final class AmbientWorkspaceTests: XCTestCase {
         XCTAssertTrue(spaceHTML.contains("Space"))
     }
 
-    func testCompilerExcludesUnacceptedDrafts() throws {
+    func testCompilerExcludesUnacceptedGeneratedDrafts() throws {
         let workspace = temporaryDirectory()
         try FileManager.default.createDirectory(at: workspace.appendingPathComponent("drafts"), withIntermediateDirectories: true)
         let draftURL = workspace.appendingPathComponent("drafts/private.md")
@@ -255,6 +255,7 @@ final class AmbientWorkspaceTests: XCTestCase {
         ---
         title: "Private Draft"
         type: draft
+        provider: gemini
         accepted: false
         ---
 
@@ -272,6 +273,31 @@ final class AmbientWorkspaceTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: compiler.outputDir.appendingPathComponent("drafts++private.html").path))
     }
 
+    func testCompilerRendersUnacceptedDraftWithoutProvider() throws {
+        let workspace = temporaryDirectory()
+        try FileManager.default.createDirectory(at: workspace.appendingPathComponent("notes"), withIntermediateDirectories: true)
+        let noteURL = workspace.appendingPathComponent("notes/source-note.md")
+        try """
+        ---
+        title: "Source Note"
+        type: claim
+        status: active
+        accepted: false
+        source: "[[sources/442-warmup-summary.md]]"
+        ---
+
+        # Source Note
+
+        Content here.
+        """.write(to: noteURL, atomically: true, encoding: .utf8)
+
+        let compiler = Compiler(sourceDir: workspace)
+        compiler.scanPages()
+
+        XCTAssertTrue(compiler.compileSingle(slug: "notes++source-note"))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: compiler.outputDir.appendingPathComponent("notes++source-note.html").path))
+    }
+
     func testCompilerRemovesStaleHtmlWhenDraftBecomesUnaccepted() throws {
         let workspace = temporaryDirectory()
         try FileManager.default.createDirectory(at: workspace.appendingPathComponent("drafts"), withIntermediateDirectories: true)
@@ -280,6 +306,7 @@ final class AmbientWorkspaceTests: XCTestCase {
         ---
         title: "Private Draft"
         type: draft
+        provider: gemini
         accepted: true
         ---
 
@@ -298,6 +325,7 @@ final class AmbientWorkspaceTests: XCTestCase {
         ---
         title: "Private Draft"
         type: draft
+        provider: gemini
         accepted: false
         ---
 
@@ -330,6 +358,440 @@ final class AmbientWorkspaceTests: XCTestCase {
             draftTexts.contains { $0.contains("[[questions++untitled-question]]") },
             draftTexts.joined(separator: "\n---\n")
         )
+    }
+
+    @MainActor
+    func testQueueAcceptsReadableRegularFile() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+
+        let importDir = workspace.appendingPathComponent("imports")
+        try FileManager.default.createDirectory(at: importDir, withIntermediateDirectories: true)
+        let fileURL = importDir.appendingPathComponent("source.pdf")
+        try Data("hello".utf8).write(to: fileURL)
+
+        let added = store.queueAmbientUploads(from: fileURL.path)
+
+        XCTAssertEqual(added, 1)
+        XCTAssertEqual(store.ambientUploadQueue.count, 1)
+        XCTAssertEqual(store.ambientUploadQueue[0].status, .queued)
+        XCTAssertEqual(store.ambientUploadQueue[0].sourceKind, .localFile)
+    }
+
+    @MainActor
+    func testQueueRejectsMissingUploadPath() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+
+        let missingURL = workspace.appendingPathComponent("imports/missing.pdf")
+        let added = store.queueAmbientUploads(from: missingURL.path)
+
+        XCTAssertEqual(added, 1)
+        XCTAssertEqual(store.ambientUploadQueue.count, 1)
+        XCTAssertEqual(store.ambientUploadQueue[0].status, .failed)
+        XCTAssertEqual(store.ambientUploadQueue[0].error, "File does not exist.")
+    }
+
+    @MainActor
+    func testCopyQueuedUploadCreatesRawFile() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+
+        let source = workspace.appendingPathComponent("imports/paper.pdf")
+        try FileManager.default.createDirectory(at: source.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("paper".utf8).write(to: source)
+
+        _ = store.queueAmbientUploads(from: source.path)
+        XCTAssertEqual(store.copyQueuedAmbientFilesToRaw(), 1)
+        XCTAssertEqual(store.ambientUploadQueue[0].status, .copiedToRaw)
+        XCTAssertEqual(store.ambientUploadQueue[0].rawRelativePath, "raw/paper.pdf")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.appendingPathComponent("raw/paper.pdf").path))
+    }
+
+    @MainActor
+    func testCopyQueuedUploadCreatesUniqueDestination() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+
+        let rawDir = workspace.appendingPathComponent("raw")
+        try FileManager.default.createDirectory(at: rawDir, withIntermediateDirectories: true)
+        let alreadyInRaw = rawDir.appendingPathComponent("already.md")
+        try Data("inside raw".utf8).write(to: alreadyInRaw)
+
+        let importA = workspace.appendingPathComponent("imports/a")
+        let importB = workspace.appendingPathComponent("imports/b")
+        try FileManager.default.createDirectory(at: importA, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: importB, withIntermediateDirectories: true)
+        let reportA = importA.appendingPathComponent("report.pdf")
+        let reportB = importB.appendingPathComponent("report.pdf")
+        try Data("A".utf8).write(to: reportA)
+        try Data("B".utf8).write(to: reportB)
+
+        _ = store.queueAmbientUploads(from: "\(alreadyInRaw.path)\n\(reportA.path)\n\(reportB.path)")
+        let copied = store.copyQueuedAmbientFilesToRaw()
+
+        XCTAssertEqual(copied, 3)
+        XCTAssertEqual(store.ambientUploadQueue.count, 3)
+        XCTAssertEqual(store.ambientUploadQueue[0].status, .alreadyInRaw)
+        XCTAssertEqual(store.ambientUploadQueue[0].rawRelativePath, "raw/already.md")
+        XCTAssertEqual(store.ambientUploadQueue[1].status, .copiedToRaw)
+        XCTAssertEqual(store.ambientUploadQueue[2].status, .copiedToRaw)
+
+        let rawContents = try FileManager.default.contentsOfDirectory(atPath: rawDir.path)
+        XCTAssertTrue(rawContents.contains("already.md"))
+        XCTAssertTrue(rawContents.contains("report.pdf"))
+        XCTAssertTrue(rawContents.contains("report-2.pdf"))
+    }
+
+    @MainActor
+    func testIngestCommandUsesRawRelativePaths() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+
+        store.updateSettings {
+            $0.activeProvider = .custom
+            $0.customProviderCommand = "/bin/echo"
+        }
+        XCTAssertEqual(store.terminalAgentState.phase, .configured)
+        XCTAssertFalse(store.terminalAgentState.isActive)
+
+        let importFile = workspace.appendingPathComponent("imports/ingest.md")
+        try FileManager.default.createDirectory(at: importFile.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("ingest me".utf8).write(to: importFile)
+
+        _ = store.queueAmbientUploads(from: importFile.path)
+        XCTAssertEqual(store.copyQueuedAmbientFilesToRaw(), 1)
+        XCTAssertNil(store.ingestQueuedAmbientItemsWithProvider())
+        XCTAssertEqual(store.ambientUploadQueue[0].status, .copiedToRaw)
+        XCTAssertEqual(store.ambientNotifications.first?.level, .warning)
+
+        store.setTerminalAgentActive()
+        let command = store.ingestQueuedAmbientItemsWithProvider()
+
+        XCTAssertEqual(
+            command,
+            "Use the ingest skill on raw/ingest.md. Summarize it into the wiki, update relevant pages, and append provenance."
+        )
+        XCTAssertEqual(store.ambientUploadQueue[0].status, .ingestSent)
+        XCTAssertNotNil(store.ambientUploadQueue[0].sentAt)
+    }
+
+    @MainActor
+    func testIngestCommandAutoCopiesQueuedFilesToRaw() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+
+        store.updateSettings {
+            $0.activeProvider = .custom
+            $0.customProviderCommand = "/bin/echo"
+        }
+        store.setTerminalAgentActive()
+
+        let importFile = workspace.appendingPathComponent("imports/queued.md")
+        try FileManager.default.createDirectory(at: importFile.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("queued".utf8).write(to: importFile)
+        _ = store.queueAmbientUploads(from: importFile.path)
+
+        let command = store.ingestQueuedAmbientItemsWithProvider()
+
+        XCTAssertEqual(
+            command,
+            "Use the ingest skill on raw/queued.md. Summarize it into the wiki, update relevant pages, and append provenance."
+        )
+        XCTAssertEqual(store.ambientUploadQueue[0].status, .ingestSent)
+        XCTAssertEqual(store.ambientUploadQueue[0].rawRelativePath, "raw/queued.md")
+    }
+
+    @MainActor
+    func testIngestCommandCanBePreparedAgainForPreviouslySentItem() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+
+        store.updateSettings {
+            $0.activeProvider = .custom
+            $0.customProviderCommand = "/bin/echo"
+        }
+        store.setTerminalAgentActive()
+
+        let source = workspace.appendingPathComponent("imports/retry.md")
+        try FileManager.default.createDirectory(at: source.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("retry".utf8).write(to: source)
+
+        _ = store.queueAmbientUploads(from: source.path)
+        XCTAssertEqual(store.copyQueuedAmbientFilesToRaw(), 1)
+        XCTAssertNotNil(store.ingestQueuedAmbientItemsWithProvider())
+        XCTAssertEqual(store.ambientUploadQueue[0].status, .ingestSent)
+
+        let secondCommand = store.ingestQueuedAmbientItemsWithProvider()
+        XCTAssertEqual(
+            secondCommand,
+            "Use the ingest skill on raw/retry.md. Summarize it into the wiki, update relevant pages, and append provenance."
+        )
+    }
+
+    @MainActor
+    func testAmbientNotificationsTrimToLatestEight() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+
+        for index in 0..<10 {
+            _ = store.queueAmbientUploads(from: "missing-\(index).md")
+        }
+
+        XCTAssertEqual(store.ambientNotifications.count, 8)
+        let newest = try XCTUnwrap(store.ambientNotifications.first)
+        let oldest = try XCTUnwrap(store.ambientNotifications.last)
+        XCTAssertGreaterThanOrEqual(newest.createdAt, oldest.createdAt)
+    }
+
+    @MainActor
+    func testProviderStatusDoesNotMeanActiveWithoutTerminalLaunch() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+        store.updateSettings {
+            $0.activeProvider = .custom
+            $0.customProviderCommand = "/bin/echo"
+        }
+
+        XCTAssertEqual(store.terminalAgentState.phase, .configured)
+        XCTAssertFalse(store.terminalAgentState.isActive)
+    }
+
+    @MainActor
+    func testTerminalOutputParserStripsAnsi() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+        store.updateSettings {
+            $0.activeProvider = .custom
+            $0.customProviderCommand = "/bin/echo"
+        }
+        store.setTerminalAgentActive()
+
+        store.terminalIngestOutput(lines: ["\u{001B}[31moperation success\u{001B}[0m"])
+
+        XCTAssertEqual(store.ambientNotifications.first?.level, .success)
+        XCTAssertEqual(store.ambientNotifications.first?.message, "operation success")
+    }
+
+    @MainActor
+    func testTerminalOutputParserIgnoresPromptNoise() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+        store.updateSettings {
+            $0.activeProvider = .custom
+            $0.customProviderCommand = "/bin/echo"
+        }
+        store.setTerminalAgentActive()
+        let before = store.ambientNotifications.count
+
+        store.terminalIngestOutput(lines: ["$", "sidharth@mac %", "   "])
+
+        XCTAssertEqual(store.ambientNotifications.count, before)
+    }
+
+    @MainActor
+    func testTerminalOutputParserIgnoresPromptWithTypedCommand() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+        store.updateSettings {
+            $0.activeProvider = .custom
+            $0.customProviderCommand = "/bin/echo"
+        }
+        store.setTerminalAgentActive()
+        let before = store.ambientNotifications.count
+
+        store.terminalIngestOutput(lines: ["sidharth@sudu 77on4 % ccodex"])
+
+        XCTAssertEqual(store.ambientNotifications.count, before)
+    }
+
+    @MainActor
+    func testTerminalOutputParserDemotesActiveWhenShellPromptReturns() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+        store.updateSettings {
+            $0.activeProvider = .custom
+            $0.customProviderCommand = "/bin/echo"
+        }
+        store.setTerminalAgentActive()
+
+        store.terminalIngestOutput(lines: ["sidharth@sudu 77on4 %"])
+
+        XCTAssertEqual(store.terminalAgentState.phase, .configured)
+        XCTAssertFalse(store.terminalAgentState.isActive)
+    }
+
+    @MainActor
+    func testTerminalOutputParserIgnoresProviderUiChromeLine() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+        store.updateSettings {
+            $0.activeProvider = .custom
+            $0.customProviderCommand = "/bin/echo"
+        }
+        store.setTerminalAgentActive()
+        let before = store.ambientNotifications.count
+
+        store.terminalIngestOutput(lines: ["breakdown.BooBootBootiBootinBooting \u{203A} Summarize recent commits gpt-5.3-codex high \u{203A} / /model choose what model and reasoning effort"])
+
+        XCTAssertEqual(store.ambientNotifications.count, before)
+    }
+
+    @MainActor
+    func testTerminalResetBridgeStateClearsAmbientNotifications() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+
+        _ = store.queueAmbientUploads(from: "missing.md")
+        XCTAssertFalse(store.ambientNotifications.isEmpty)
+
+        store.terminalResetBridgeState()
+
+        XCTAssertTrue(store.ambientNotifications.isEmpty)
+    }
+
+    @MainActor
+    func testRemoveAmbientNotificationDeletesSingleEntry() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+
+        _ = store.queueAmbientUploads(from: "missing-a.md")
+        _ = store.queueAmbientUploads(from: "missing-b.md")
+        XCTAssertGreaterThanOrEqual(store.ambientNotifications.count, 2)
+        let toRemove = try XCTUnwrap(store.ambientNotifications.first?.id)
+
+        store.removeAmbientNotification(id: toRemove)
+
+        XCTAssertFalse(store.ambientNotifications.contains(where: { $0.id == toRemove }))
+    }
+
+    @MainActor
+    func testTerminalOutputParserClassifiesErrorLine() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+        store.updateSettings {
+            $0.activeProvider = .custom
+            $0.customProviderCommand = "/bin/echo"
+        }
+        store.setTerminalAgentActive()
+
+        store.terminalIngestOutput(lines: ["task failed with exception"])
+
+        XCTAssertEqual(store.ambientNotifications.first?.level, .error)
+        XCTAssertEqual(store.ambientNotifications.first?.message, "task failed with exception")
+    }
+
+    @MainActor
+    func testGeminiProviderDetection() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+        store.updateSettings {
+            $0.activeProvider = .gemini
+            $0.customProviderCommand = "/bin/echo"
+        }
+        XCTAssertEqual(store.terminalAgentState.phase, .configured,
+                       "gemini is on PATH so should start as configured")
+        store.setTerminalAgentLaunching(command: "gemini")
+        XCTAssertEqual(store.terminalAgentState.phase, .launching)
+        store.terminalIngestOutput(lines: ["Gemini is ready"])
+        XCTAssertTrue(store.terminalAgentState.isActive,
+                      "Gemini activation hint should promote to active from launching")
+    }
+
+    @MainActor
+    func testOpencodeProviderDetection() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+        store.updateSettings {
+            $0.activeProvider = .opencode
+        }
+        store.setTerminalAgentLaunching(command: "opencode")
+        store.terminalIngestOutput(lines: ["opencode session started"])
+
+        XCTAssertEqual(store.terminalAgentState.phase, .active)
+    }
+
+    @MainActor
+    func testSoulforgeProviderDetection() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+        store.updateSettings {
+            $0.activeProvider = .soulforge
+        }
+        store.setTerminalAgentLaunching(command: "soulforge --headless")
+        store.terminalIngestOutput(lines: ["SoulForge agent connected"])
+
+        XCTAssertEqual(store.terminalAgentState.phase, .active)
+    }
+
+    @MainActor
+    func testHermesProviderActivityDetection() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+        store.open(rootURL: workspace)
+        store.updateSettings {
+            $0.activeProvider = .custom
+            $0.customProviderCommand = "/bin/echo"
+        }
+        store.setTerminalAgentActive()
+
+        store.terminalIngestOutput(lines: ["hermes bridge active"])
+
+        XCTAssertTrue(store.terminalAgentState.isActive,
+                      "active custom provider stays active after hermes-keyword output")
+    }
+
+    @MainActor
+    func testNewProvidersHaveDefaultCommands() {
+        XCTAssertFalse(AIProviderKind.gemini.defaultCommand.isEmpty)
+        XCTAssertFalse(AIProviderKind.opencode.defaultCommand.isEmpty)
+        XCTAssertFalse(AIProviderKind.soulforge.defaultCommand.isEmpty)
+        XCTAssertFalse(AIProviderKind.hermes.defaultCommand.isEmpty)
+    }
+
+    @MainActor
+    func testNewProvidersHaveDisplayNames() {
+        XCTAssertEqual(AIProviderKind.gemini.displayName, "Gemini")
+        XCTAssertEqual(AIProviderKind.opencode.displayName, "OpenCode")
+        XCTAssertEqual(AIProviderKind.soulforge.displayName, "SoulForge")
+        XCTAssertEqual(AIProviderKind.hermes.displayName, "Hermes")
+    }
+
+    @MainActor
+    func testNewProvidersSkillBridgePaths() {
+        let root = temporaryDirectory()
+        let codexPaths = ShellAIProviderAdapter(kind: .codex).skillBridgePaths(in: root)
+        let geminiPaths = ShellAIProviderAdapter(kind: .gemini).skillBridgePaths(in: root)
+        let opencodePaths = ShellAIProviderAdapter(kind: .opencode).skillBridgePaths(in: root)
+        let soulforgePaths = ShellAIProviderAdapter(kind: .soulforge).skillBridgePaths(in: root)
+        let hermesPaths = ShellAIProviderAdapter(kind: .hermes).skillBridgePaths(in: root)
+
+        XCTAssertTrue(geminiPaths.contains(where: { $0.lastPathComponent == "GEMINI.md" }))
+        XCTAssertTrue(opencodePaths.contains(where: { $0.lastPathComponent == ".opencode" }))
+        XCTAssertTrue(soulforgePaths.contains(where: { $0.lastPathComponent == "AGENTS.md" }))
+        XCTAssertTrue(hermesPaths.contains(where: { $0.lastPathComponent == ".hermes" }))
+
+        XCTAssertEqual(codexPaths, soulforgePaths, "soulforge should share AGENTS.md bridge with codex")
     }
 
     private func temporaryDirectory() -> URL {

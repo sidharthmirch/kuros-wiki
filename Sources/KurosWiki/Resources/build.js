@@ -1114,7 +1114,9 @@ function isUnacceptedGeneratedMarkdown(source) {
   if (!parsed.fm) return false;
   var accepted = parsed.fm.accepted;
   if (accepted == null) return false;
-  return String(accepted).toLowerCase().replace(/^["']|["']$/g, '') === 'false';
+  var isUnaccepted = String(accepted).toLowerCase().replace(/^["']|["']$/g, '') === 'false';
+  if (!isUnaccepted) return false;
+  return !!parsed.fm.provider;
 }
 
 function extractTitle(source) {
