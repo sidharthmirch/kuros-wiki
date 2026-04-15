@@ -2,14 +2,14 @@
 import PackageDescription
 
 let package = Package(
-    name: "Wikiwise",
+    name: "KurosWiki",
     platforms: [.macOS(.v14)],
     dependencies: [
         .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", from: "1.2.0"),
     ],
     targets: [
         .executableTarget(
-            name: "Wikiwise",
+            name: "KurosWiki",
             dependencies: [
                 .product(name: "SwiftTerm", package: "SwiftTerm"),
             ],
@@ -27,12 +27,12 @@ let package = Package(
                 .copy("Resources/codemirror-bundle.js"),
                 .copy("Resources/editor.html"),
                 .copy("Resources/scaffold"),
-                .copy("Resources/Wikiwise.icns"),
+                .copy("Resources/KurosWiki.icns"),
             ]
         ),
         .testTarget(
-            name: "WikiwiseTests",
-            dependencies: ["Wikiwise"]
+            name: "KurosWikiTests",
+            dependencies: ["KurosWiki"]
         ),
     ]
 )

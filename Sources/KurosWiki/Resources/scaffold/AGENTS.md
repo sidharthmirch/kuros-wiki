@@ -1,6 +1,6 @@
 # Agent Instructions
 
-This is a local-first ambient research workspace. Wikiwise owns the markdown workspace model; the active AI provider supplies reasoning and execution through the terminal.
+This is a local-first ambient research workspace. Kuro's Wiki owns the markdown workspace model; the active AI provider supplies reasoning and execution through the terminal.
 
 Read `CLAUDE.md` for the full schema when available. This file exists so Codex, Claude Code, Cursor-compatible agents, and other tools can work from the same rules.
 
@@ -17,10 +17,10 @@ Read `CLAUDE.md` for the full schema when available. This file exists so Codex, 
 - `claims/` — atomic source-backed claims.
 - `questions/` — open research questions.
 - `drafts/` — reviewable AI drafts and suggestions.
-- `wiki/` — compatibility pages for the original Wikiwise viewer.
+- `wiki/` — compatibility pages for the original Kuro's Wiki viewer.
 - `raw/` — immutable raw source material.
 - `site/` — build tooling and compiled output.
-- `.wikiwise/` — app-owned settings, provider bridge, and ambient job state.
+- `.kuros-wiki/` — app-owned settings, provider bridge, and ambient job state.
 - `skills/` — canonical skill instructions.
 - `.claude/skills/` — Claude Code bridge copied from canonical skills.
 
@@ -32,15 +32,15 @@ The workspace must remain provider-agnostic.
 - Provider-owned execution: reasoning, source distillation, synthesis, and edits requested through terminal workflows.
 - Canonical skills: `skills/<skill-name>/SKILL.md`.
 - Claude bridge: `.claude/skills/<skill-name>/SKILL.md`.
-- Provider state: `.wikiwise/workspace.json`.
+- Provider state: `.kuros-wiki/workspace.json`.
 - Active profile: `.claude/active-user`.
 
 ## Profiles
 
-Profiles are workspace-scoped. The default profile is `kuro`; users can add valid local profiles such as `sidharth` and `vidur` in Wikiwise settings.
+Profiles are workspace-scoped. The default profile is `kuro`; users can add valid local profiles such as `sidharth` and `vidur` in Kuro's Wiki settings.
 
 - Read `.claude/active-user` before making attributed edits.
-- Check `profiles` in `.wikiwise/workspace.json` if you need to verify the active profile is allowed.
+- Check `profiles` in `.kuros-wiki/workspace.json` if you need to verify the active profile is allowed.
 - Attribute authored or edited artifacts with `created_by`, `updated_by`, or `authors` when appropriate.
 
 When creating generated artifacts, include frontmatter:
@@ -86,7 +86,7 @@ Legacy wiki skills may also be present for import, ingest, lint, Readwise, and u
 
 ## Live Viewer
 
-Wikiwise watches this folder. Markdown and CSS changes trigger rebuilds. If the viewer misses a bulk update, touch `.rebuild`:
+Kuro's Wiki watches this folder. Markdown and CSS changes trigger rebuilds. If the viewer misses a bulk update, touch `.rebuild`:
 
 ```sh
 touch .rebuild

@@ -59,7 +59,7 @@ enum AmbientOrchestrator {
         trigger: AmbientTrigger
     ) throws -> AmbientJob {
         let index = buildAmbientIndex(items: items, settings: settings)
-        let outputURL = rootURL.appendingPathComponent(".wikiwise/ambient-index.md")
+        let outputURL = rootURL.appendingPathComponent(".kuros-wiki/ambient-index.md")
         try FileManager.default.createDirectory(at: outputURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try index.write(to: outputURL, atomically: true, encoding: .utf8)
 
@@ -70,7 +70,7 @@ enum AmbientOrchestrator {
             status: .completed,
             skillName: AmbientSkillName.connectThread.rawValue,
             providerID: settings.activeProvider.provenanceID,
-            outputPath: ".wikiwise/ambient-index.md",
+            outputPath: ".kuros-wiki/ambient-index.md",
             summary: "Updated the ambient workspace index from local markdown."
         )
     }
@@ -165,7 +165,7 @@ enum AmbientOrchestrator {
 
         ## Provenance
 
-        Created by Wikiwise ambient maintain mode for \(settings.activeProvider.displayName).
+        Created by Kuro's Wiki ambient maintain mode for \(settings.activeProvider.displayName).
         """
 
         try body.write(to: outputURL, atomically: true, encoding: .utf8)
@@ -194,7 +194,7 @@ enum AmbientOrchestrator {
         return """
         ---
         type: ambient-index
-        generated_by: wikiwise
+        generated_by: kuros-wiki
         provider: \(settings.activeProvider.provenanceID)
         generated_at: \(ISO8601DateFormatter().string(from: Date()))
         ---

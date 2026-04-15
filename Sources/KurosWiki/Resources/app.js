@@ -1,4 +1,4 @@
-// Wikiwise client-side: search, wikilink hover previews, TOC scrollspy.
+// Kuro's Wiki client-side: search, wikilink hover previews, TOC scrollspy.
 (function () {
 
   function escapeHtml(text) {

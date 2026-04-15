@@ -32,7 +32,7 @@ struct EditorWebView: NSViewRepresentable {
         context.coordinator.pendingScrollFraction = scrollFraction
 
         // Load editor.html from the resource bundle
-        if let editorURL = wikiwiseBundle.url(forResource: "editor", withExtension: "html") {
+        if let editorURL = kurosWikiBundle.url(forResource: "editor", withExtension: "html") {
             wv.loadFileURL(editorURL, allowingReadAccessTo: editorURL.deletingLastPathComponent())
         }
 

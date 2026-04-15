@@ -1,4 +1,4 @@
-// Wikiwise graph visualization — force-directed with D3 + force-graph.
+// Kuro's Wiki graph visualization — force-directed with D3 + force-graph.
 // Injected variables: GRAPH_DATA (inline JSON), GRAPH_COLORS (color map)
 (function () {
   var COLORS = GRAPH_COLORS;

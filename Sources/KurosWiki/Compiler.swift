@@ -171,19 +171,19 @@ final class Compiler {
         let mdItPath = sourceDir.appendingPathComponent("site/markdown-it.min.js").path
         if let src = try? String(contentsOfFile: mdItPath, encoding: .utf8) {
             jsContext.evaluateScript(src)
-        } else if let url = wikiwiseBundle.url(forResource: "markdown-it.min", withExtension: "js"),
+        } else if let url = kurosWikiBundle.url(forResource: "markdown-it.min", withExtension: "js"),
                   let src = try? String(contentsOf: url, encoding: .utf8) {
             jsContext.evaluateScript(src)
         }
 
         // Load KaTeX for math rendering — must come before build.js
-        if let url = wikiwiseBundle.url(forResource: "katex.min", withExtension: "js"),
+        if let url = kurosWikiBundle.url(forResource: "katex.min", withExtension: "js"),
            let src = try? String(contentsOf: url, encoding: .utf8) {
             jsContext.evaluateScript(src)
         }
 
         // Load KaTeX CSS as a JS string constant
-        if let url = wikiwiseBundle.url(forResource: "katex.min", withExtension: "css"),
+        if let url = kurosWikiBundle.url(forResource: "katex.min", withExtension: "css"),
            let css = try? String(contentsOf: url, encoding: .utf8) {
             let escaped = css
                 .replacingOccurrences(of: "\\", with: "\\\\")
@@ -193,7 +193,7 @@ final class Compiler {
         }
 
         // Expose KaTeX fonts directory path so build.js can copy font files
-        if let url = wikiwiseBundle.url(forResource: "katex-fonts", withExtension: nil) {
+        if let url = kurosWikiBundle.url(forResource: "katex-fonts", withExtension: nil) {
             let escaped = url.path.replacingOccurrences(of: "'", with: "\\'")
             jsContext.evaluateScript("var bundledKatexFontsDir = '\(escaped)';")
         }
@@ -201,7 +201,7 @@ final class Compiler {
         // Load CSS as a JS string constant — prefer user's site/style.css
         let cssPath = sourceDir.appendingPathComponent("site/style.css").path
         let cssSource: String? = (try? String(contentsOfFile: cssPath, encoding: .utf8))
-            ?? (wikiwiseBundle.url(forResource: "style", withExtension: "css").flatMap { try? String(contentsOf: $0, encoding: .utf8) })
+            ?? (kurosWikiBundle.url(forResource: "style", withExtension: "css").flatMap { try? String(contentsOf: $0, encoding: .utf8) })
         if let css = cssSource {
             let escaped = css
                 .replacingOccurrences(of: "\\", with: "\\\\")
@@ -214,7 +214,7 @@ final class Compiler {
         for (name, varName) in [("app", "bundledAppJS"), ("graph", "bundledGraphJS")] {
             let userPath = sourceDir.appendingPathComponent("site/\(name).js").path
             let jsSource: String? = (try? String(contentsOfFile: userPath, encoding: .utf8))
-                ?? (wikiwiseBundle.url(forResource: name, withExtension: "js").flatMap { try? String(contentsOf: $0, encoding: .utf8) })
+                ?? (kurosWikiBundle.url(forResource: name, withExtension: "js").flatMap { try? String(contentsOf: $0, encoding: .utf8) })
             if let js = jsSource {
                 let escaped = js
                     .replacingOccurrences(of: "\\", with: "\\\\")
@@ -227,7 +227,7 @@ final class Compiler {
         // Load map.html as a string constant — prefer user's site/ copy
         let mapPath = sourceDir.appendingPathComponent("site/map.html").path
         let mapSource: String? = (try? String(contentsOfFile: mapPath, encoding: .utf8))
-            ?? (wikiwiseBundle.url(forResource: "map", withExtension: "html").flatMap { try? String(contentsOf: $0, encoding: .utf8) })
+            ?? (kurosWikiBundle.url(forResource: "map", withExtension: "html").flatMap { try? String(contentsOf: $0, encoding: .utf8) })
         if let html = mapSource {
             let escaped = html
                 .replacingOccurrences(of: "\\", with: "\\\\")
@@ -239,7 +239,7 @@ final class Compiler {
         // Load map-3d.html as a string constant — prefer user's site/ copy
         let map3dPath = sourceDir.appendingPathComponent("site/map-3d.html").path
         let map3dSource: String? = (try? String(contentsOfFile: map3dPath, encoding: .utf8))
-            ?? (wikiwiseBundle.url(forResource: "map-3d", withExtension: "html").flatMap { try? String(contentsOf: $0, encoding: .utf8) })
+            ?? (kurosWikiBundle.url(forResource: "map-3d", withExtension: "html").flatMap { try? String(contentsOf: $0, encoding: .utf8) })
         if let html = map3dSource {
             let escaped = html
                 .replacingOccurrences(of: "\\", with: "\\\\")
@@ -252,7 +252,7 @@ final class Compiler {
         let buildPath = sourceDir.appendingPathComponent("site/build.js").path
         if let src = try? String(contentsOfFile: buildPath, encoding: .utf8) {
             jsContext.evaluateScript(src)
-        } else if let url = wikiwiseBundle.url(forResource: "build", withExtension: "js"),
+        } else if let url = kurosWikiBundle.url(forResource: "build", withExtension: "js"),
                   let src = try? String(contentsOf: url, encoding: .utf8) {
             jsContext.evaluateScript(src)
         }

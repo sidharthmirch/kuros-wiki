@@ -22,7 +22,7 @@ Turn source material into a local-first source record without losing origin, con
 
 ## Invocation Expectations
 
-1. Read `AGENTS.md` and `.wikiwise/provider-bridge.md`.
+1. Read `AGENTS.md` and `.kuros-wiki/provider-bridge.md`.
 2. Preserve the original URL, author, title, access date, and capture context when available.
 3. Create or update a `sources/<slug>.md` file. Do not overwrite authored notes.
 4. Link the source to relevant notes, claims, questions, entities, and threads using `[[wikilinks]]`.

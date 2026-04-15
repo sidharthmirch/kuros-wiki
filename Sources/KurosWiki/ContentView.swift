@@ -152,7 +152,7 @@ struct ContentView: View {
     @State private var publishConfig: PublishConfig? = nil
 
     private var folderDisplayName: String {
-        rootURL?.lastPathComponent ?? "WikiWise"
+        rootURL?.lastPathComponent ?? "Kuro's Wiki"
     }
 
     /// Whether the user has a wiki open (vs. the welcome screen).
@@ -250,7 +250,7 @@ struct ContentView: View {
                         .italic()
                         .foregroundStyle(Color.sidebarSelectedText)
 
-                    Text("WikiWise helps you turn any folder\nof markdown files into a browsable,\npublishable wiki.")
+                    Text("Kuro's Wiki helps you turn any folder\nof markdown files into a browsable,\npublishable wiki.")
                         .font(.system(size: 15, weight: .regular))
                         .foregroundStyle(Color.sidebarText)
                         .multilineTextAlignment(.center)
@@ -314,7 +314,7 @@ struct ContentView: View {
                         .font(.system(size: 18, weight: .medium, design: .serif))
                         .italic()
                         .foregroundStyle(Color.sidebarSelectedText)
-                    Text("WikiWise")
+                    Text("Kuro's Wiki")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Color.sidebarText)
                 }
@@ -1448,7 +1448,7 @@ struct ContentView: View {
                         .font(.system(size: 20, weight: .medium, design: .serif))
                         .foregroundStyle(Color.sidebarSelectedText)
 
-                    Text("WikiWise created the folder structure, build tools, and agent skills. Now seed it with sources.")
+                    Text("Kuro's Wiki created the folder structure, build tools, and agent skills. Now seed it with sources.")
                         .font(.system(size: 14))
                         .foregroundStyle(Color.sidebarText)
                         .lineSpacing(3)

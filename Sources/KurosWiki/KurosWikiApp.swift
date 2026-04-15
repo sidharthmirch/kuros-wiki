@@ -23,7 +23,7 @@ enum AppearanceMode: String, CaseIterable {
 }
 
 @main
-struct WikiwiseApp: App {
+struct KurosWikiApp: App {
     @AppStorage("appearanceMode") private var appearanceMode: String = AppearanceMode.auto.rawValue
 
     init() {
@@ -33,7 +33,7 @@ struct WikiwiseApp: App {
         NSApplication.shared.appearance = mode.nsAppearance
 
         // Set app icon from bundled .icns
-        if let icnsURL = wikiwiseBundle.url(forResource: "Wikiwise", withExtension: "icns"),
+        if let icnsURL = kurosWikiBundle.url(forResource: "KurosWiki", withExtension: "icns"),
            let icon = NSImage(contentsOf: icnsURL) {
             NSApplication.shared.applicationIconImage = icon
         }

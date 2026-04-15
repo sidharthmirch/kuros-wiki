@@ -6,9 +6,9 @@ Report the active workspace profile for this folder.
 
 1. Read `.claude/active-user`.
 2. If the file is missing or empty, report `kuro` as the default profile.
-3. Read `.wikiwise/workspace.json` and inspect `profiles`.
+3. Read `.kuros-wiki/workspace.json` and inspect `profiles`.
 4. Report whether the active profile is present in the workspace profile list.
-5. If the active profile is missing from `profiles`, ask the user to add it in Wikiwise settings before making attributed edits.
+5. If the active profile is missing from `profiles`, ask the user to add it in Kuro's Wiki settings before making attributed edits.
 
 ## Notes
 

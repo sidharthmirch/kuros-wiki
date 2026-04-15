@@ -8,8 +8,8 @@ import Foundation
 // inside Contents/Resources/. This accessor checks both locations.
 private class BundleLocator {}
 
-let wikiwiseBundle: Bundle = {
-    let bundleName = "Wikiwise_Wikiwise"
+let kurosWikiBundle: Bundle = {
+    let bundleName = "KurosWiki_KurosWiki"
     let currentDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
     let testBundleURL = Bundle(for: BundleLocator.self).bundleURL
     let testResourceURL = Bundle(for: BundleLocator.self).resourceURL

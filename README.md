@@ -1,14 +1,14 @@
-# Wikiwise
+# Kuro's Wiki
 
 A native macOS app that turns any folder of markdown files into a browsable, publishable wiki — maintained by your coding agent.
 
-**[Download for macOS](https://github.com/TristanH/wikiwise/releases/latest/download/Wikiwise-macOS.dmg)** (Apple Silicon + Intel, signed and notarized)
+**[Download for macOS](https://github.com/sidharthmirch/kuros-wiki/releases/latest/download/KurosWiki-macOS.dmg)** (Apple Silicon + Intel, signed and notarized)
 
 Based on [Andrej Karpathy's llm-wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f): instead of RAG, the LLM incrementally builds and maintains a persistent, interlinked wiki. You add sources; the agent reads them, writes summary pages, cross-references everything, and keeps it all consistent. The wiki compounds with every source you add.
 
 ## How it works
 
-1. **Create a wiki** — Wikiwise scaffolds the folder structure, build tools, and agent skills
+1. **Create a wiki** — Kuro's Wiki scaffolds the folder structure, build tools, and agent skills
 2. **Open your agent** — use the built-in terminal or your own (Claude Code, Codex, Cursor)
 3. **Add sources** — paste URLs, import from Readwise, or point at existing files
 4. **Read and explore** — browse the compiled wiki with search, backlinks, and graph visualization
@@ -20,10 +20,10 @@ The agent does the grunt work: summarizing, cross-referencing, filing, and bookk
 Requires macOS 14+ and Swift 5.10+.
 
 ```
-git clone https://github.com/TristanH/wikiwise.git
-cd wikiwise
+git clone https://github.com/sidharthmirch/kuros-wiki.git
+cd kuros-wiki
 swift build
-.build/arm64-apple-macosx/debug/Wikiwise
+.build/arm64-apple-macosx/debug/KurosWiki
 ```
 
 ## Architecture
@@ -50,12 +50,13 @@ my-wiki/
     build.js      # the wiki compiler
     style.css     # the wiki theme
     out/           # compiled HTML (gitignored)
+  .kuros-wiki/    # app-owned workspace state
   .claude/        # agent skills and settings
   CLAUDE.md       # wiki schema
   llm-wiki.md     # Karpathy's pattern (reference)
 ```
 
-See [`Sources/Wikiwise/Resources/scaffold/`](Sources/Wikiwise/Resources/scaffold/) for the full template — this is what gets copied when you create a new wiki, including the schema (`CLAUDE.md`), agent skills, and seed pages.
+See [`Sources/KurosWiki/Resources/scaffold/`](Sources/KurosWiki/Resources/scaffold/) for the full template — this is what gets copied when you create a new wiki, including the schema (`CLAUDE.md`), agent skills, and seed pages.
 
 ## License
 

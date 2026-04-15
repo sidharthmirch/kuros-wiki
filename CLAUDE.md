@@ -1,11 +1,11 @@
-# Wikiwise
+# Kuro's Wiki
 
 A native macOS wiki reader — SwiftUI app with sidebar file browser and rendered markdown content.
 
 ## Development
 
 - Build: `swift build`
-- Run: `.build/arm64-apple-macosx/debug/Wikiwise`
+- Run: `.build/arm64-apple-macosx/debug/KurosWiki`
 
 ## Architecture
 
@@ -16,7 +16,7 @@ A native macOS wiki reader — SwiftUI app with sidebar file browser and rendere
 
 ## Wiki scaffold
 
-When users create a new wiki, the app copies the template from `Sources/Wikiwise/Resources/scaffold/`. This is the source of truth for the default wiki structure, including:
+When users create a new wiki, the app copies the template from `Sources/KurosWiki/Resources/scaffold/`. This is the source of truth for the default wiki structure, including:
 
 - `CLAUDE.md` — the wiki schema (conventions, writing style, workflows)
 - `AGENTS.md` — cross-agent instructions for Cursor, Codex, etc.

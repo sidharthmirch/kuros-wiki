@@ -21,7 +21,7 @@ def assert_true(condition, message):
 
 
 def test_skill_scaffold():
-    skills_root = ROOT / "Sources/Wikiwise/Resources/scaffold/skills"
+    skills_root = ROOT / "Sources/KurosWiki/Resources/scaffold/skills"
     for skill in SKILLS:
         path = skills_root / skill / "SKILL.md"
         text = path.read_text()
@@ -34,7 +34,7 @@ def test_skill_scaffold():
 
 
 def test_workspace_state_template_is_valid_json():
-    scaffold = (ROOT / "Sources/Wikiwise/WikiScaffold.swift").read_text()
+    scaffold = (ROOT / "Sources/KurosWiki/WikiScaffold.swift").read_text()
     start = scaffold.index('let workspaceState = """') + len('let workspaceState = """')
     end = scaffold.index('"""', start)
     state = json.loads(scaffold[start:end])
@@ -44,13 +44,13 @@ def test_workspace_state_template_is_valid_json():
 
 
 def test_graph_knows_research_types():
-    build_js = (ROOT / "Sources/Wikiwise/Resources/build.js").read_text()
+    build_js = (ROOT / "Sources/KurosWiki/Resources/build.js").read_text()
     for label in ["Inbox", "Note", "Thread", "Brief", "Session", "Task", "Entity", "Claim", "Question", "Draft"]:
         assert_true(label in build_js, f"build.js is missing graph label {label}")
 
 
 def test_site_build_excludes_agent_skills():
-    build_js = (ROOT / "Sources/Wikiwise/Resources/build.js").read_text()
+    build_js = (ROOT / "Sources/KurosWiki/Resources/build.js").read_text()
     assert_true("dir === rootDir && entry === 'skills'" in build_js, "site build should exclude only top-level skills/")
 
 

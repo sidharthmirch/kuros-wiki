@@ -1,15 +1,15 @@
 ---
 name: upgrade
-description: Upgrade this wiki's scaffold files (CLAUDE.md, skills, build tooling) to match the latest Wikiwise app version from GitHub.
+description: Upgrade this wiki's scaffold files (CLAUDE.md, skills, build tooling) to match the latest Kuro's Wiki app version from GitHub.
 ---
 
 # Upgrade scaffold
 
-Bring this wiki's scaffold files up to date with the latest Wikiwise release.
+Bring this wiki's scaffold files up to date with the latest Kuro's Wiki release.
 
 ## How it works
 
-The file `.claude/scaffold-version` records either a `created:YYYY-MM-DD` date (from initial scaffold creation) or a git commit SHA (from a previous upgrade). This skill fetches the latest scaffold from the Wikiwise GitHub repo, diffs what changed, and applies updates.
+The file `.claude/scaffold-version` records either a `created:YYYY-MM-DD` date (from initial scaffold creation) or a git commit SHA (from a previous upgrade). This skill fetches the latest scaffold from the Kuro's Wiki GitHub repo, diffs what changed, and applies updates.
 
 If `.claude/scaffold-version` doesn't exist, this wiki predates versioning — treat everything as potentially stale and do a full comparison.
 
@@ -44,7 +44,7 @@ import sys, json
 files = json.load(sys.stdin).get('files', [])
 for f in files:
     name = f['filename']
-    if name.startswith('Sources/Wikiwise/Resources/scaffold/') or name.startswith('Sources/Wikiwise/Resources/') and name.count('/') == 4:
+    if name.startswith('Sources/KurosWiki/Resources/scaffold/') or name.startswith('Sources/KurosWiki/Resources/') and name.count('/') == 4:
         print(name)
 "
 ```
@@ -78,18 +78,18 @@ fetch_file() {
 
 Scaffold templates (CLAUDE.md, AGENTS.md, skills, wiki seed files):
 ```
-https://raw.githubusercontent.com/TristanH/wikiwise/main/Sources/Wikiwise/Resources/scaffold/<path>
+https://raw.githubusercontent.com/TristanH/wikiwise/main/Sources/KurosWiki/Resources/scaffold/<path>
 ```
 
 Build tooling (these live outside scaffold/ in Resources/):
 ```
-https://raw.githubusercontent.com/TristanH/wikiwise/main/Sources/Wikiwise/Resources/build.js
-https://raw.githubusercontent.com/TristanH/wikiwise/main/Sources/Wikiwise/Resources/style.css
-https://raw.githubusercontent.com/TristanH/wikiwise/main/Sources/Wikiwise/Resources/app.js
-https://raw.githubusercontent.com/TristanH/wikiwise/main/Sources/Wikiwise/Resources/graph.js
-https://raw.githubusercontent.com/TristanH/wikiwise/main/Sources/Wikiwise/Resources/map.html
-https://raw.githubusercontent.com/TristanH/wikiwise/main/Sources/Wikiwise/Resources/map-3d.html
-https://raw.githubusercontent.com/TristanH/wikiwise/main/Sources/Wikiwise/Resources/markdown-it.min.js
+https://raw.githubusercontent.com/TristanH/wikiwise/main/Sources/KurosWiki/Resources/build.js
+https://raw.githubusercontent.com/TristanH/wikiwise/main/Sources/KurosWiki/Resources/style.css
+https://raw.githubusercontent.com/TristanH/wikiwise/main/Sources/KurosWiki/Resources/app.js
+https://raw.githubusercontent.com/TristanH/wikiwise/main/Sources/KurosWiki/Resources/graph.js
+https://raw.githubusercontent.com/TristanH/wikiwise/main/Sources/KurosWiki/Resources/map.html
+https://raw.githubusercontent.com/TristanH/wikiwise/main/Sources/KurosWiki/Resources/map-3d.html
+https://raw.githubusercontent.com/TristanH/wikiwise/main/Sources/KurosWiki/Resources/markdown-it.min.js
 ```
 
 ## Step 3: Categorize and apply changes
@@ -152,7 +152,7 @@ echo "$LATEST" > .claude/scaffold-version
 touch .rebuild
 ```
 
-This tells the Wikiwise app to recompile everything with the updated build tooling.
+This tells the Kuro's Wiki app to recompile everything with the updated build tooling.
 
 ## Step 6: Report
 

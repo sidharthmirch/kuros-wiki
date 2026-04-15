@@ -1,4 +1,4 @@
-// Minimal CodeMirror 6 editor bundle for Wikiwise.
+// Minimal CodeMirror 6 editor bundle for Kuro's Wiki.
 // Gets bundled into a single IIFE via esbuild, loaded in a WKWebView.
 
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection } from '@codemirror/view'

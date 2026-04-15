@@ -34,7 +34,7 @@ enum WikiScaffold {
             url.appendingPathComponent("wiki/sources").path,
             url.appendingPathComponent("site").path,
             url.appendingPathComponent("site/out").path,
-            url.appendingPathComponent(".wikiwise").path,
+            url.appendingPathComponent(".kuros-wiki").path,
             url.appendingPathComponent("skills").path,
             url.appendingPathComponent(".claude").path,
             url.appendingPathComponent(".claude/skills").path,
@@ -44,7 +44,7 @@ enum WikiScaffold {
         }
 
         // Copy scaffold templates from the app bundle
-        guard let scaffoldDir = wikiwiseBundle.url(forResource: "scaffold", withExtension: nil) else {
+        guard let scaffoldDir = kurosWikiBundle.url(forResource: "scaffold", withExtension: nil) else {
             throw ScaffoldError.missingResources
         }
 
@@ -115,13 +115,13 @@ enum WikiScaffold {
           "suggestions" : []
         }
         """
-        try workspaceState.write(to: url.appendingPathComponent(".wikiwise/workspace.json"), atomically: true, encoding: .utf8)
+        try workspaceState.write(to: url.appendingPathComponent(".kuros-wiki/workspace.json"), atomically: true, encoding: .utf8)
         try "kuro\n".write(to: url.appendingPathComponent(".claude/active-user"), atomically: true, encoding: .utf8)
 
         let providerBridge = """
         # Provider Bridge
 
-        Wikiwise owns the workspace model. The active provider supplies reasoning and execution through the terminal.
+        Kuro's Wiki owns the workspace model. The active provider supplies reasoning and execution through the terminal.
 
         - Canonical skills: `skills/<name>/SKILL.md`
         - Codex and Cursor-style agents: read `AGENTS.md` and `skills/`
@@ -130,7 +130,7 @@ enum WikiScaffold {
 
         Generated artifacts should include `provider`, `skill`, `created_at`, `action_level`, `updated_by`, and `accepted` in frontmatter.
         """
-        try providerBridge.write(to: url.appendingPathComponent(".wikiwise/provider-bridge.md"), atomically: true, encoding: .utf8)
+        try providerBridge.write(to: url.appendingPathComponent(".kuros-wiki/provider-bridge.md"), atomically: true, encoding: .utf8)
 
         // Claude Code settings.json to register skills
         let settings = """
@@ -157,8 +157,8 @@ enum WikiScaffold {
         try settings.write(to: url.appendingPathComponent(".claude/settings.json"), atomically: true, encoding: .utf8)
 
         // Copy build.js and style.css into site/
-        if let buildJS = wikiwiseBundle.url(forResource: "build", withExtension: "js"),
-           let styleCSS = wikiwiseBundle.url(forResource: "style", withExtension: "css") {
+        if let buildJS = kurosWikiBundle.url(forResource: "build", withExtension: "js"),
+           let styleCSS = kurosWikiBundle.url(forResource: "style", withExtension: "css") {
             try fm.copyItem(at: buildJS, to: url.appendingPathComponent("site/build.js"))
             try fm.copyItem(at: styleCSS, to: url.appendingPathComponent("site/style.css"))
         }
@@ -172,7 +172,7 @@ enum WikiScaffold {
             ("map-3d", "html", "site/map-3d.html"),
         ]
         for file in supportFiles {
-            if let source = wikiwiseBundle.url(forResource: file.resource, withExtension: file.ext) {
+            if let source = kurosWikiBundle.url(forResource: file.resource, withExtension: file.ext) {
                 try fm.copyItem(at: source, to: url.appendingPathComponent(file.dest))
             }
         }
@@ -185,7 +185,7 @@ enum WikiScaffold {
         try versionInfo.write(to: url.appendingPathComponent(".claude/scaffold-version"), atomically: true, encoding: .utf8)
 
         // .gitignore for compiled output
-        let gitignore = "site/out/\npublish.json\n.rebuild\n.wikiwise/ambient-index.md\n.claude/active-user\n.claude/active-file\n"
+        let gitignore = "site/out/\npublish.json\n.rebuild\n.kuros-wiki/ambient-index.md\n.claude/active-user\n.claude/active-file\n"
         try gitignore.write(to: url.appendingPathComponent(".gitignore"), atomically: true, encoding: .utf8)
     }
 }

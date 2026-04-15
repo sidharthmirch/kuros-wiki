@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import Wikiwise
+@testable import KurosWiki
 
 final class AmbientWorkspaceTests: XCTestCase {
     private var temporaryDirectories: [URL] = []
@@ -18,8 +18,8 @@ final class AmbientWorkspaceTests: XCTestCase {
 
         try WikiScaffold.create(at: workspace, name: "Research")
 
-        XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.appendingPathComponent(".wikiwise/workspace.json").path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.appendingPathComponent(".wikiwise/provider-bridge.md").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.appendingPathComponent(".kuros-wiki/workspace.json").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.appendingPathComponent(".kuros-wiki/provider-bridge.md").path))
         XCTAssertEqual(
             try String(contentsOf: workspace.appendingPathComponent(".claude/active-user"), encoding: .utf8)
                 .trimmingCharacters(in: .whitespacesAndNewlines),
@@ -33,7 +33,7 @@ final class AmbientWorkspaceTests: XCTestCase {
         XCTAssertTrue(settings.contains("active-user"))
         XCTAssertTrue(settings.contains("active-file"))
         let gitignore = try String(contentsOf: workspace.appendingPathComponent(".gitignore"), encoding: .utf8)
-        XCTAssertTrue(gitignore.contains(".wikiwise/ambient-index.md"))
+        XCTAssertTrue(gitignore.contains(".kuros-wiki/ambient-index.md"))
         XCTAssertTrue(gitignore.contains(".claude/active-user"))
         XCTAssertTrue(gitignore.contains(".claude/active-file"))
     }
@@ -46,7 +46,7 @@ final class AmbientWorkspaceTests: XCTestCase {
         store.open(rootURL: workspace)
         let capturedURL = store.capture(text: "https://example.com/research", as: .inbox)
 
-        let stateURL = workspace.appendingPathComponent(".wikiwise/workspace.json")
+        let stateURL = workspace.appendingPathComponent(".kuros-wiki/workspace.json")
         XCTAssertTrue(FileManager.default.fileExists(atPath: stateURL.path))
         XCTAssertEqual(
             try String(contentsOf: workspace.appendingPathComponent(".claude/active-user"), encoding: .utf8)
@@ -130,6 +130,34 @@ final class AmbientWorkspaceTests: XCTestCase {
     }
 
     @MainActor
+    func testWorkspaceStoreMigratesLegacyWorkspaceState() throws {
+        let workspace = temporaryDirectory()
+        try FileManager.default.createDirectory(at: workspace.appendingPathComponent(".wikiwise"), withIntermediateDirectories: true)
+        let legacyStateURL = workspace.appendingPathComponent(".wikiwise/workspace.json")
+        let legacyState = WorkspaceState(
+            schemaVersion: 1,
+            activeProfileID: "vidur",
+            profiles: [WorkspaceProfile(id: "vidur")],
+            settings: .default,
+            suggestions: [],
+            jobs: []
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        try encoder.encode(legacyState).write(to: legacyStateURL)
+        try FileManager.default.createDirectory(at: workspace.appendingPathComponent(".claude"), withIntermediateDirectories: true)
+        try "vidur\n".write(to: workspace.appendingPathComponent(".claude/active-user"), atomically: true, encoding: .utf8)
+        let store = WorkspaceStore()
+
+        store.open(rootURL: workspace)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.appendingPathComponent(".kuros-wiki/workspace.json").path))
+        XCTAssertEqual(store.activeProfileID, "vidur")
+        XCTAssertTrue(store.profiles.contains(WorkspaceProfile(id: "vidur")))
+    }
+
+    @MainActor
     func testAmbientMaintenanceWritesIndex() throws {
         let workspace = temporaryDirectory()
         let store = WorkspaceStore()
@@ -138,9 +166,9 @@ final class AmbientWorkspaceTests: XCTestCase {
         _ = store.capture(text: "# Thread Note\n\nConnect this.", as: .note)
         try store.runMaintenance()
 
-        let indexURL = workspace.appendingPathComponent(".wikiwise/ambient-index.md")
+        let indexURL = workspace.appendingPathComponent(".kuros-wiki/ambient-index.md")
         let index = try String(contentsOf: indexURL, encoding: .utf8)
-        XCTAssertTrue(index.contains("generated_by: wikiwise"))
+        XCTAssertTrue(index.contains("generated_by: kuros-wiki"))
         XCTAssertTrue(index.contains("## Notes"))
     }
 
@@ -282,14 +310,14 @@ final class AmbientWorkspaceTests: XCTestCase {
 
     private func temporaryDirectory() -> URL {
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("wikiwise-tests")
+            .appendingPathComponent("kuros-wiki-tests")
             .appendingPathComponent(UUID().uuidString)
         temporaryDirectories.append(url)
         return url
     }
 
     private func readWorkspaceState(from workspace: URL) throws -> WorkspaceState {
-        let data = try Data(contentsOf: workspace.appendingPathComponent(".wikiwise/workspace.json"))
+        let data = try Data(contentsOf: workspace.appendingPathComponent(".kuros-wiki/workspace.json"))
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try decoder.decode(WorkspaceState.self, from: data)

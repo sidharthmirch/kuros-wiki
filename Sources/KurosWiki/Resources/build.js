@@ -1,4 +1,4 @@
-// Wikiwise wiki compiler — runs in JavaScriptCore (no DOM, no fetch).
+// Kuro's Wiki wiki compiler — runs in JavaScriptCore (no DOM, no fetch).
 //
 // Swift bridge functions:
 //   readFile(path)      → String
@@ -146,7 +146,7 @@ var FONT_LINKS =
   '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n' +
   '<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..700;1,8..60,300..700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">';
 
-var wikiName = 'Wikiwise';
+var wikiName = "Kuro's Wiki";
 
 function initWikiName(sourceDir) {
   var claudePath = sourceDir + '/CLAUDE.md';

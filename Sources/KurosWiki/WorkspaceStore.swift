@@ -212,7 +212,7 @@ final class WorkspaceStore: ObservableObject {
                 withIntermediateDirectories: true
             )
         }
-        try fm.createDirectory(at: rootURL.appendingPathComponent(".wikiwise"), withIntermediateDirectories: true)
+        try fm.createDirectory(at: rootURL.appendingPathComponent(".kuros-wiki"), withIntermediateDirectories: true)
         try fm.createDirectory(at: rootURL.appendingPathComponent(".claude"), withIntermediateDirectories: true)
         try fm.createDirectory(at: rootURL.appendingPathComponent(".claude/skills"), withIntermediateDirectories: true)
         if !fm.fileExists(atPath: activeUserURL(rootURL: rootURL).path) {
@@ -220,6 +220,7 @@ final class WorkspaceStore: ObservableObject {
         }
 
         let stateURL = stateURL(rootURL: rootURL)
+        try migrateLegacyWorkspaceStateIfNeeded(rootURL: rootURL, newStateURL: stateURL)
         if !fm.fileExists(atPath: stateURL.path) {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -268,7 +269,14 @@ final class WorkspaceStore: ObservableObject {
     }
 
     private func stateURL(rootURL: URL) -> URL {
-        rootURL.appendingPathComponent(".wikiwise/workspace.json")
+        rootURL.appendingPathComponent(".kuros-wiki/workspace.json")
+    }
+
+    private func migrateLegacyWorkspaceStateIfNeeded(rootURL: URL, newStateURL: URL) throws {
+        let legacyStateURL = rootURL.appendingPathComponent(".wikiwise/workspace.json")
+        guard !FileManager.default.fileExists(atPath: newStateURL.path),
+              FileManager.default.fileExists(atPath: legacyStateURL.path) else { return }
+        try FileManager.default.copyItem(at: legacyStateURL, to: newStateURL)
     }
 
     private func activeUserURL(rootURL: URL) -> URL {
@@ -442,7 +450,7 @@ final class WorkspaceStore: ObservableObject {
 
         This folder is local-first. Notes, sources, threads, briefs, sessions, tasks, entities, claims, questions, and drafts are plain markdown.
 
-        The app owns `.wikiwise/workspace.json` for provider selection, ambient settings, suggestions, and job history.
+        Kuro's Wiki owns `.kuros-wiki/workspace.json` for provider selection, ambient settings, suggestions, and job history.
 
         The active workspace profile is stored in `.claude/active-user`.
 
@@ -452,12 +460,12 @@ final class WorkspaceStore: ObservableObject {
     }
 
     private func createProviderBridgeIfMissing(rootURL: URL) throws {
-        let bridgeURL = rootURL.appendingPathComponent(".wikiwise/provider-bridge.md")
+        let bridgeURL = rootURL.appendingPathComponent(".kuros-wiki/provider-bridge.md")
         guard !FileManager.default.fileExists(atPath: bridgeURL.path) else { return }
         let content = """
         # Provider Bridge
 
-        Wikiwise owns the workspace model. The active AI provider supplies reasoning and execution through the terminal.
+        Kuro's Wiki owns the workspace model. The active AI provider supplies reasoning and execution through the terminal.
 
         - Canonical skills: `skills/<name>/SKILL.md`
         - Codex and Cursor-style agents: read `AGENTS.md` and `skills/`
@@ -470,7 +478,7 @@ final class WorkspaceStore: ObservableObject {
     }
 
     private func copyCanonicalSkillsIfAvailable(rootURL: URL) throws {
-        guard let scaffoldURL = wikiwiseBundle.url(forResource: "scaffold", withExtension: nil) else { return }
+        guard let scaffoldURL = kurosWikiBundle.url(forResource: "scaffold", withExtension: nil) else { return }
         let scaffoldSkillsURL = scaffoldURL.appendingPathComponent("skills")
         let fm = FileManager.default
         let canonicalRoot = rootURL.appendingPathComponent("skills")

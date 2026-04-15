@@ -1,10 +1,10 @@
 # {{WIKI_NAME}} — ambient research schema
 
-This is a local-first ambient research workspace. It keeps the original Wikiwise markdown/wiki strengths, but the primary model is now note-first research: captures, notes, sources, threads, briefs, sessions, tasks, entities, claims, questions, and drafts.
+This is a local-first ambient research workspace. It keeps the original Kuro's Wiki markdown/wiki strengths, but the primary model is now note-first research: captures, notes, sources, threads, briefs, sessions, tasks, entities, claims, questions, and drafts.
 
 ## Product Shape
 
-Wikiwise is the workbench. The AI provider is swappable.
+Kuro's Wiki is the workbench. The AI provider is swappable.
 
 - The app owns the workspace model, file layout, ambient jobs, and provenance.
 - The provider supplies reasoning and execution through terminal workflows.
@@ -29,15 +29,15 @@ Wikiwise is the workbench. The AI provider is swappable.
 - `site/` — compiler assets and generated HTML.
 - `skills/` — canonical skills.
 - `.claude/skills/` — Claude Code bridge.
-- `.wikiwise/` — app-owned provider state and ambient job records.
+- `.kuros-wiki/` — app-owned provider state and ambient job records.
 - `.claude/active-user` — active workspace profile.
 
 ## Profiles
 
-Profiles are local to this workspace. New workspaces start as `kuro`, and users can add valid profiles such as `sidharth` and `vidur` in Wikiwise settings.
+Profiles are local to this workspace. New workspaces start as `kuro`, and users can add valid profiles such as `sidharth` and `vidur` in Kuro's Wiki settings.
 
 - Read `.claude/active-user` before attributing edits.
-- Allowed profiles are stored in `.wikiwise/workspace.json`.
+- Allowed profiles are stored in `.kuros-wiki/workspace.json`.
 - Profile IDs use lowercase letters, numbers, hyphens, and underscores, start with a letter or number, and are at most 32 characters.
 - Use `created_by`, `updated_by`, or `authors` in frontmatter when authorship matters.
 
@@ -84,13 +84,13 @@ Do not perform destructive edits silently. Draft first.
 
 ## Provider Switching
 
-Do not encode provider-specific assumptions into notes. Provider-specific commands and bridges belong in `.wikiwise/provider-bridge.md`, `.wikiwise/workspace.json`, and adapter-specific folders such as `.claude/skills/`.
+Do not encode provider-specific assumptions into notes. Provider-specific commands and bridges belong in `.kuros-wiki/provider-bridge.md`, `.kuros-wiki/workspace.json`, and adapter-specific folders such as `.claude/skills/`.
 
 Artifacts should always say which provider and skill produced them.
 
 ## Live Viewer
 
-Wikiwise watches the project directory and rebuilds markdown output. If auto-refresh misses changes:
+Kuro's Wiki watches the project directory and rebuilds markdown output. If auto-refresh misses changes:
 
 ```sh
 touch .rebuild
