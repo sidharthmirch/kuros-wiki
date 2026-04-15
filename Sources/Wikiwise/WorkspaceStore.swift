@@ -8,6 +8,8 @@ final class WorkspaceStore: ObservableObject {
     @Published private(set) var items: [ResearchItem] = []
     @Published private(set) var suggestions: [AmbientSuggestion] = []
     @Published private(set) var jobs: [AmbientJob] = []
+    @Published private(set) var profiles: [WorkspaceProfile] = [WorkspaceProfile(id: WorkspaceProfile.defaultID)]
+    @Published private(set) var activeProfileID: String = WorkspaceProfile.defaultID
     @Published private(set) var lastError: String?
 
     var providerStatus: AIProviderStatus {
@@ -22,7 +24,8 @@ final class WorkspaceStore: ObservableObject {
         self.rootURL = rootURL
         do {
             try bootstrapIfNeeded(rootURL: rootURL)
-            try loadState()
+            let activeProfileID = try readOrCreateActiveProfileID(rootURL: rootURL)
+            try loadState(activeProfileIDFromFile: activeProfileID)
             refresh()
             if settings.backgroundProcessingEnabled && settings.ambientIntensity == .standard {
                 try runMaintenance(trigger: .workspaceOpened)
@@ -46,6 +49,53 @@ final class WorkspaceStore: ObservableObject {
         mutate(&next)
         settings = next
         saveState()
+    }
+
+    func addProfile(id rawID: String) -> Bool {
+        let id = normalizedProfileID(rawID)
+        guard Self.isValidProfileID(id) else {
+            lastError = Self.profileValidationMessage
+            return false
+        }
+        guard !profiles.contains(where: { $0.id == id }) else {
+            lastError = "Profile already exists."
+            return false
+        }
+
+        profiles.append(WorkspaceProfile(id: id))
+        saveState()
+        lastError = nil
+        return true
+    }
+
+    func switchProfile(to rawID: String) {
+        let id = normalizedProfileID(rawID)
+        guard Self.isValidProfileID(id), profiles.contains(where: { $0.id == id }) else {
+            lastError = "Select an existing workspace profile."
+            return
+        }
+        guard let rootURL else { return }
+
+        do {
+            try writeActiveProfileID(id, rootURL: rootURL)
+            activeProfileID = id
+            saveState()
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    static func isValidProfileID(_ rawID: String) -> Bool {
+        let id = rawID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard (1...32).contains(id.count),
+              let first = id.unicodeScalars.first,
+              CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789").contains(first) else {
+            return false
+        }
+        return id.unicodeScalars.allSatisfy {
+            CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789-_").contains($0)
+        }
     }
 
     @discardableResult
@@ -163,7 +213,11 @@ final class WorkspaceStore: ObservableObject {
             )
         }
         try fm.createDirectory(at: rootURL.appendingPathComponent(".wikiwise"), withIntermediateDirectories: true)
+        try fm.createDirectory(at: rootURL.appendingPathComponent(".claude"), withIntermediateDirectories: true)
         try fm.createDirectory(at: rootURL.appendingPathComponent(".claude/skills"), withIntermediateDirectories: true)
+        if !fm.fileExists(atPath: activeUserURL(rootURL: rootURL).path) {
+            try writeActiveProfileID(WorkspaceProfile.defaultID, rootURL: rootURL)
+        }
 
         let stateURL = stateURL(rootURL: rootURL)
         if !fm.fileExists(atPath: stateURL.path) {
@@ -178,7 +232,7 @@ final class WorkspaceStore: ObservableObject {
         try createProviderBridgeIfMissing(rootURL: rootURL)
     }
 
-    private func loadState() throws {
+    private func loadState(activeProfileIDFromFile: String) throws {
         guard let rootURL else { return }
         let url = stateURL(rootURL: rootURL)
         let data = try Data(contentsOf: url)
@@ -188,12 +242,17 @@ final class WorkspaceStore: ObservableObject {
         settings = state.settings
         suggestions = state.suggestions
         jobs = state.jobs
+        activeProfileID = activeProfileIDFromFile
+        profiles = profilesWithActiveProfile(state.profiles, activeProfileID: activeProfileIDFromFile)
+        saveState()
     }
 
     private func saveState() {
         guard let rootURL else { return }
         let state = WorkspaceState(
             schemaVersion: 1,
+            activeProfileID: activeProfileID,
+            profiles: profiles,
             settings: settings,
             suggestions: suggestions,
             jobs: jobs
@@ -211,6 +270,55 @@ final class WorkspaceStore: ObservableObject {
     private func stateURL(rootURL: URL) -> URL {
         rootURL.appendingPathComponent(".wikiwise/workspace.json")
     }
+
+    private func activeUserURL(rootURL: URL) -> URL {
+        rootURL.appendingPathComponent(".claude/active-user")
+    }
+
+    private func readOrCreateActiveProfileID(rootURL: URL) throws -> String {
+        let url = activeUserURL(rootURL: rootURL)
+        let fm = FileManager.default
+        try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+
+        if !fm.fileExists(atPath: url.path) {
+            try writeActiveProfileID(WorkspaceProfile.defaultID, rootURL: rootURL)
+            return WorkspaceProfile.defaultID
+        }
+
+        let id = normalizedProfileID(try String(contentsOf: url, encoding: .utf8))
+        guard Self.isValidProfileID(id) else {
+            try writeActiveProfileID(WorkspaceProfile.defaultID, rootURL: rootURL)
+            return WorkspaceProfile.defaultID
+        }
+        return id
+    }
+
+    private func writeActiveProfileID(_ id: String, rootURL: URL) throws {
+        try "\(id)\n".write(to: activeUserURL(rootURL: rootURL), atomically: true, encoding: .utf8)
+    }
+
+    private func profilesWithActiveProfile(_ loadedProfiles: [WorkspaceProfile], activeProfileID: String) -> [WorkspaceProfile] {
+        var seen = Set<String>()
+        var result: [WorkspaceProfile] = []
+        for profile in loadedProfiles where Self.isValidProfileID(profile.id) && !seen.contains(profile.id) {
+            seen.insert(profile.id)
+            result.append(profile)
+        }
+        if result.isEmpty || !seen.contains(activeProfileID) {
+            result.append(WorkspaceProfile(id: activeProfileID))
+        }
+        return result.sorted { lhs, rhs in
+            if lhs.id == WorkspaceProfile.defaultID { return true }
+            if rhs.id == WorkspaceProfile.defaultID { return false }
+            return lhs.id < rhs.id
+        }
+    }
+
+    private func normalizedProfileID(_ rawID: String) -> String {
+        rawID.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static let profileValidationMessage = "Profile IDs must start with a lowercase letter or number and use only lowercase letters, numbers, hyphens, or underscores."
 
     private func createItem(
         kind: ResearchItemKind,
@@ -231,6 +339,10 @@ final class WorkspaceStore: ObservableObject {
         status: active
         provider: \(settings.activeProvider.provenanceID)
         action_level: \(settings.defaultActionLevel.rawValue)
+        created_by: \(activeProfileID)
+        updated_by: \(activeProfileID)
+        authors:
+          - \(activeProfileID)
         created_at: \(now)
         updated_at: \(now)
         \(skillLine)accepted: true
@@ -332,6 +444,8 @@ final class WorkspaceStore: ObservableObject {
 
         The app owns `.wikiwise/workspace.json` for provider selection, ambient settings, suggestions, and job history.
 
+        The active workspace profile is stored in `.claude/active-user`.
+
         Canonical skills live in `skills/`. Provider-specific bridges may mirror them, such as `.claude/skills/`.
         """
         try content.write(to: readmeURL, atomically: true, encoding: .utf8)
@@ -348,8 +462,9 @@ final class WorkspaceStore: ObservableObject {
         - Canonical skills: `skills/<name>/SKILL.md`
         - Codex and Cursor-style agents: read `AGENTS.md` and `skills/`
         - Claude Code-style agents: read `CLAUDE.md` and `.claude/skills/`
+        - Active profile: `.claude/active-user`
 
-        Generated artifacts should include frontmatter with `provider`, `skill`, `created_at`, `action_level`, and `accepted`.
+        Generated artifacts should include frontmatter with `provider`, `skill`, `created_at`, `action_level`, `updated_by`, and `accepted`.
         """
         try content.write(to: bridgeURL, atomically: true, encoding: .utf8)
     }

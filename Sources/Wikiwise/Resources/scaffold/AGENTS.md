@@ -33,6 +33,15 @@ The workspace must remain provider-agnostic.
 - Canonical skills: `skills/<skill-name>/SKILL.md`.
 - Claude bridge: `.claude/skills/<skill-name>/SKILL.md`.
 - Provider state: `.wikiwise/workspace.json`.
+- Active profile: `.claude/active-user`.
+
+## Profiles
+
+Profiles are workspace-scoped. The default profile is `kuro`; users can add valid local profiles such as `sidharth` and `vidur` in Wikiwise settings.
+
+- Read `.claude/active-user` before making attributed edits.
+- Check `profiles` in `.wikiwise/workspace.json` if you need to verify the active profile is allowed.
+- Attribute authored or edited artifacts with `created_by`, `updated_by`, or `authors` when appropriate.
 
 When creating generated artifacts, include frontmatter:
 
@@ -40,6 +49,9 @@ When creating generated artifacts, include frontmatter:
 provider: codex
 skill: distill-note
 action_level: suggest
+updated_by: kuro
+authors:
+  - kuro
 created_at: 2026-04-13T12:00:00Z
 accepted: false
 ```
@@ -68,6 +80,7 @@ Read the relevant skill file before running a workflow.
 | `contradiction-check` | Detect conflicting or stale claims |
 | `daily-review` | Produce a daily digest |
 | `research-sprint` | Run a focused research pass |
+| `whoami` | Report the active workspace profile |
 
 Legacy wiki skills may also be present for import, ingest, lint, Readwise, and upgrade workflows.
 
@@ -79,4 +92,4 @@ Wikiwise watches this folder. Markdown and CSS changes trigger rebuilds. If the 
 touch .rebuild
 ```
 
-The current active file is written to `.claude/active-file` for compatible agents.
+The current active profile is written to `.claude/active-user`, and the current active file is written to `.claude/active-file` for compatible agents.

@@ -20,10 +20,22 @@ final class AmbientWorkspaceTests: XCTestCase {
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.appendingPathComponent(".wikiwise/workspace.json").path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.appendingPathComponent(".wikiwise/provider-bridge.md").path))
+        XCTAssertEqual(
+            try String(contentsOf: workspace.appendingPathComponent(".claude/active-user"), encoding: .utf8)
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+            "kuro"
+        )
         XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.appendingPathComponent("skills/capture-source/SKILL.md").path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.appendingPathComponent(".claude/skills/capture-source/SKILL.md").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.appendingPathComponent("skills/whoami/SKILL.md").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.appendingPathComponent(".claude/skills/whoami/SKILL.md").path))
+        let settings = try String(contentsOf: workspace.appendingPathComponent(".claude/settings.json"), encoding: .utf8)
+        XCTAssertTrue(settings.contains("active-user"))
+        XCTAssertTrue(settings.contains("active-file"))
         let gitignore = try String(contentsOf: workspace.appendingPathComponent(".gitignore"), encoding: .utf8)
         XCTAssertTrue(gitignore.contains(".wikiwise/ambient-index.md"))
+        XCTAssertTrue(gitignore.contains(".claude/active-user"))
+        XCTAssertTrue(gitignore.contains(".claude/active-file"))
     }
 
     @MainActor
@@ -36,6 +48,11 @@ final class AmbientWorkspaceTests: XCTestCase {
 
         let stateURL = workspace.appendingPathComponent(".wikiwise/workspace.json")
         XCTAssertTrue(FileManager.default.fileExists(atPath: stateURL.path))
+        XCTAssertEqual(
+            try String(contentsOf: workspace.appendingPathComponent(".claude/active-user"), encoding: .utf8)
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+            "kuro"
+        )
         XCTAssertEqual(capturedURL?.deletingLastPathComponent().lastPathComponent, "sources")
         XCTAssertTrue(store.items.contains { $0.kind == .source && $0.title == "example.com" })
         XCTAssertTrue(
@@ -44,6 +61,72 @@ final class AmbientWorkspaceTests: XCTestCase {
         )
         let capturedContent = try String(contentsOf: XCTUnwrap(capturedURL), encoding: .utf8)
         XCTAssertTrue(capturedContent.contains("action_level: suggest"))
+        XCTAssertTrue(capturedContent.contains("updated_by: kuro"))
+    }
+
+    @MainActor
+    func testWorkspaceStoreInheritsExistingActiveUser() throws {
+        let workspace = temporaryDirectory()
+        try FileManager.default.createDirectory(at: workspace.appendingPathComponent(".claude"), withIntermediateDirectories: true)
+        try "vidur\n".write(to: workspace.appendingPathComponent(".claude/active-user"), atomically: true, encoding: .utf8)
+        let store = WorkspaceStore()
+
+        store.open(rootURL: workspace)
+
+        XCTAssertEqual(store.activeProfileID, "vidur")
+        XCTAssertTrue(store.profiles.contains(WorkspaceProfile(id: "vidur")))
+        let state = try readWorkspaceState(from: workspace)
+        XCTAssertEqual(state.activeProfileID, "vidur")
+        XCTAssertTrue(state.profiles.contains(WorkspaceProfile(id: "vidur")))
+    }
+
+    @MainActor
+    func testSwitchingProfileWritesActiveUserFile() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+
+        store.open(rootURL: workspace)
+        XCTAssertTrue(store.addProfile(id: "vidur"))
+        store.switchProfile(to: "vidur")
+
+        let activeUser = try String(contentsOf: workspace.appendingPathComponent(".claude/active-user"), encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        XCTAssertEqual(activeUser, "vidur")
+        XCTAssertEqual(store.activeProfileID, "vidur")
+        XCTAssertEqual(try readWorkspaceState(from: workspace).activeProfileID, "vidur")
+    }
+
+    @MainActor
+    func testAddingProfilesPersistsWithoutSwitching() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+
+        store.open(rootURL: workspace)
+        XCTAssertTrue(store.addProfile(id: "sidharth"))
+        XCTAssertTrue(store.addProfile(id: "vidur"))
+
+        XCTAssertEqual(store.activeProfileID, "kuro")
+        let state = try readWorkspaceState(from: workspace)
+        XCTAssertEqual(state.profiles.map(\.id), ["kuro", "sidharth", "vidur"])
+        XCTAssertEqual(state.activeProfileID, "kuro")
+    }
+
+    @MainActor
+    func testInvalidProfileIDsAreRejected() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+
+        store.open(rootURL: workspace)
+        for id in ["Kuro!", "", "   "] {
+            XCTAssertFalse(store.addProfile(id: id), "expected rejection for \(id)")
+        }
+
+        XCTAssertEqual(store.profiles, [WorkspaceProfile(id: "kuro")])
+        XCTAssertEqual(store.activeProfileID, "kuro")
+        XCTAssertEqual(store.lastError, "Profile IDs must start with a lowercase letter or number and use only lowercase letters, numbers, hyphens, or underscores.")
+        let activeUser = try String(contentsOf: workspace.appendingPathComponent(".claude/active-user"), encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        XCTAssertEqual(activeUser, "kuro")
     }
 
     @MainActor
@@ -203,5 +286,12 @@ final class AmbientWorkspaceTests: XCTestCase {
             .appendingPathComponent(UUID().uuidString)
         temporaryDirectories.append(url)
         return url
+    }
+
+    private func readWorkspaceState(from workspace: URL) throws -> WorkspaceState {
+        let data = try Data(contentsOf: workspace.appendingPathComponent(".wikiwise/workspace.json"))
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(WorkspaceState.self, from: data)
     }
 }

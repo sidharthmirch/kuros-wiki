@@ -82,6 +82,7 @@ enum WikiScaffold {
         let skillDirs = [
             "capture-source", "distill-note", "connect-thread", "build-brief",
             "session-closeout", "contradiction-check", "daily-review", "research-sprint",
+            "whoami",
             "ingest", "digest", "lint", "ingest-tweets", "import-readwise",
             "fetch-readwise-document", "fetch-readwise-highlights", "upgrade"
         ]
@@ -95,7 +96,13 @@ enum WikiScaffold {
         // Workspace state — the app owns this file, agents may read it.
         let workspaceState = """
         {
+          "activeProfileID" : "kuro",
           "jobs" : [],
+          "profiles" : [
+            {
+              "id" : "kuro"
+            }
+          ],
           "schemaVersion" : 1,
           "settings" : {
             "activeProvider" : "codex",
@@ -109,6 +116,7 @@ enum WikiScaffold {
         }
         """
         try workspaceState.write(to: url.appendingPathComponent(".wikiwise/workspace.json"), atomically: true, encoding: .utf8)
+        try "kuro\n".write(to: url.appendingPathComponent(".claude/active-user"), atomically: true, encoding: .utf8)
 
         let providerBridge = """
         # Provider Bridge
@@ -118,8 +126,9 @@ enum WikiScaffold {
         - Canonical skills: `skills/<name>/SKILL.md`
         - Codex and Cursor-style agents: read `AGENTS.md` and `skills/`
         - Claude Code-style agents: read `CLAUDE.md` and `.claude/skills/`
+        - Active profile: `.claude/active-user`
 
-        Generated artifacts should include `provider`, `skill`, `created_at`, `action_level`, and `accepted` in frontmatter.
+        Generated artifacts should include `provider`, `skill`, `created_at`, `action_level`, `updated_by`, and `accepted` in frontmatter.
         """
         try providerBridge.write(to: url.appendingPathComponent(".wikiwise/provider-bridge.md"), atomically: true, encoding: .utf8)
 
@@ -136,7 +145,7 @@ enum WikiScaffold {
                 "hooks": [
                   {
                     "type": "command",
-                    "command": "echo \\"[Active file: $(cat .claude/active-file 2>/dev/null || echo none)]\\"",
+                    "command": "echo \\"[Active user: $(cat .claude/active-user 2>/dev/null || echo kuro)] [Active file: $(cat .claude/active-file 2>/dev/null || echo none)]\\"",
                     "timeout": 2000
                   }
                 ]
@@ -176,7 +185,7 @@ enum WikiScaffold {
         try versionInfo.write(to: url.appendingPathComponent(".claude/scaffold-version"), atomically: true, encoding: .utf8)
 
         // .gitignore for compiled output
-        let gitignore = "site/out/\npublish.json\n.rebuild\n.wikiwise/ambient-index.md\n"
+        let gitignore = "site/out/\npublish.json\n.rebuild\n.wikiwise/ambient-index.md\n.claude/active-user\n.claude/active-file\n"
         try gitignore.write(to: url.appendingPathComponent(".gitignore"), atomically: true, encoding: .utf8)
     }
 }

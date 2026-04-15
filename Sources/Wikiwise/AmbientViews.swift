@@ -286,9 +286,38 @@ struct AmbientRailView: View {
 
 struct ProviderSettingsView: View {
     @ObservedObject var workspaceStore: WorkspaceStore
+    @State private var newProfileID = ""
 
     var body: some View {
         Form {
+            Section("Profiles") {
+                Picker("Active profile", selection: Binding(
+                    get: { workspaceStore.activeProfileID },
+                    set: { profileID in
+                        workspaceStore.switchProfile(to: profileID)
+                    }
+                )) {
+                    ForEach(workspaceStore.profiles) { profile in
+                        Text(profile.id).tag(profile.id)
+                    }
+                }
+
+                HStack {
+                    TextField("New profile ID", text: $newProfileID)
+
+                    Button("Add") {
+                        if workspaceStore.addProfile(id: newProfileID) {
+                            newProfileID = ""
+                        }
+                    }
+                    .disabled(!canAddProfile)
+                }
+
+                Text("Profiles are stored per workspace and written to `.claude/active-user`.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Provider") {
                 Picker("Active provider", selection: Binding(
                     get: { workspaceStore.settings.activeProvider },
@@ -356,5 +385,10 @@ struct ProviderSettingsView: View {
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .background(Color.sidebarBg)
+    }
+
+    private var canAddProfile: Bool {
+        let id = newProfileID.trimmingCharacters(in: .whitespacesAndNewlines)
+        return WorkspaceStore.isValidProfileID(id) && !workspaceStore.profiles.contains(where: { $0.id == id })
     }
 }

@@ -155,6 +155,12 @@ struct ResearchItem: Identifiable, Hashable {
     var relativePath: String
 }
 
+struct WorkspaceProfile: Identifiable, Codable, Hashable {
+    static let defaultID = "kuro"
+
+    var id: String
+}
+
 struct AmbientSuggestion: Identifiable, Codable, Hashable {
     var id: UUID
     var createdAt: Date
@@ -249,16 +255,55 @@ struct WorkspaceSettings: Codable, Equatable {
 
 struct WorkspaceState: Codable {
     var schemaVersion: Int
+    var activeProfileID: String
+    var profiles: [WorkspaceProfile]
     var settings: WorkspaceSettings
     var suggestions: [AmbientSuggestion]
     var jobs: [AmbientJob]
 
     static let empty = WorkspaceState(
         schemaVersion: 1,
+        activeProfileID: WorkspaceProfile.defaultID,
+        profiles: [WorkspaceProfile(id: WorkspaceProfile.defaultID)],
         settings: .default,
         suggestions: [],
         jobs: []
     )
+
+    init(
+        schemaVersion: Int,
+        activeProfileID: String = WorkspaceProfile.defaultID,
+        profiles: [WorkspaceProfile] = [WorkspaceProfile(id: WorkspaceProfile.defaultID)],
+        settings: WorkspaceSettings,
+        suggestions: [AmbientSuggestion],
+        jobs: [AmbientJob]
+    ) {
+        self.schemaVersion = schemaVersion
+        self.activeProfileID = activeProfileID
+        self.profiles = profiles
+        self.settings = settings
+        self.suggestions = suggestions
+        self.jobs = jobs
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        let decodedActiveProfileID = try container.decodeIfPresent(String.self, forKey: .activeProfileID) ?? WorkspaceProfile.defaultID
+        let decodedProfiles = try container.decodeIfPresent([WorkspaceProfile].self, forKey: .profiles) ?? []
+        settings = try container.decodeIfPresent(WorkspaceSettings.self, forKey: .settings) ?? .default
+        suggestions = try container.decodeIfPresent([AmbientSuggestion].self, forKey: .suggestions) ?? []
+        jobs = try container.decodeIfPresent([AmbientJob].self, forKey: .jobs) ?? []
+        activeProfileID = decodedActiveProfileID
+
+        if decodedProfiles.isEmpty {
+            profiles = [WorkspaceProfile(id: decodedActiveProfileID)]
+        } else if decodedProfiles.contains(where: { $0.id == decodedActiveProfileID }) {
+            profiles = decodedProfiles
+        } else {
+            profiles = decodedProfiles + [WorkspaceProfile(id: decodedActiveProfileID)]
+        }
+    }
 }
 
 struct MarkdownFrontmatter {

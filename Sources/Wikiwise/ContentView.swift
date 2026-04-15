@@ -609,6 +609,30 @@ struct ContentView: View {
                             showRightSidebar = true
                         }
                     } label: {
+                        Text("PROFILE: \(workspaceStore.activeProfileID.uppercased())")
+                            .font(.system(size: 10, weight: .regular, design: .monospaced))
+                            .tracking(0.8)
+                            .foregroundStyle(Color.toolbarText)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(Color.clear)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 3)
+                                    .strokeBorder(Color.sidebarRule, lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .help("Workspace profile settings")
+
+                    Button {
+                        rightSidebarTab = .settings
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showRightSidebar = true
+                        }
+                    } label: {
                         HStack(spacing: 5) {
                             Circle()
                                 .fill(workspaceStore.providerStatus.isAvailable ? Color.green : Color.orange)

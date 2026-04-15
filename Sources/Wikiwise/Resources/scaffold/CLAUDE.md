@@ -30,6 +30,16 @@ Wikiwise is the workbench. The AI provider is swappable.
 - `skills/` — canonical skills.
 - `.claude/skills/` — Claude Code bridge.
 - `.wikiwise/` — app-owned provider state and ambient job records.
+- `.claude/active-user` — active workspace profile.
+
+## Profiles
+
+Profiles are local to this workspace. New workspaces start as `kuro`, and users can add valid profiles such as `sidharth` and `vidur` in Wikiwise settings.
+
+- Read `.claude/active-user` before attributing edits.
+- Allowed profiles are stored in `.wikiwise/workspace.json`.
+- Profile IDs use lowercase letters, numbers, hyphens, and underscores, start with a letter or number, and are at most 32 characters.
+- Use `created_by`, `updated_by`, or `authors` in frontmatter when authorship matters.
 
 ## Frontmatter
 
@@ -42,6 +52,10 @@ status: active
 provider: codex
 skill: distill-note
 action_level: suggest
+created_by: kuro
+updated_by: kuro
+authors:
+  - kuro
 created_at:
 updated_at:
 accepted: false
@@ -82,4 +96,4 @@ Wikiwise watches the project directory and rebuilds markdown output. If auto-ref
 touch .rebuild
 ```
 
-The active file path is available at `.claude/active-file`.
+The active profile is available at `.claude/active-user`. The active file path is available at `.claude/active-file`.
