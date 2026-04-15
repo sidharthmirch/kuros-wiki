@@ -624,16 +624,7 @@ struct ContentView: View {
                             .font(.system(size: 10, weight: .regular, design: .monospaced))
                             .tracking(0.8)
                             .foregroundStyle(Color.toolbarText)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(Color.clear)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 3)
-                                    .strokeBorder(Color.sidebarRule, lineWidth: 1)
-                            )
+                            .padding(.horizontal, 2)
                     }
                     .buttonStyle(.plain)
                     .help("Workspace profile settings")
@@ -653,16 +644,7 @@ struct ContentView: View {
                         .font(.system(size: 10, weight: .regular, design: .monospaced))
                         .tracking(0.8)
                         .foregroundStyle(Color.toolbarText)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(Color.clear)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 3)
-                                .strokeBorder(Color.sidebarRule, lineWidth: 1)
-                        )
+                        .padding(.horizontal, 2)
                     }
                     .buttonStyle(.plain)
                     .help("AI provider settings")
