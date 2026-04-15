@@ -29,6 +29,8 @@ final class AmbientWorkspaceTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.appendingPathComponent(".claude/skills/capture-source/SKILL.md").path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.appendingPathComponent("skills/whoami/SKILL.md").path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.appendingPathComponent(".claude/skills/whoami/SKILL.md").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: workspace.appendingPathComponent("skills/import-readwise/SKILL.md").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: workspace.appendingPathComponent(".claude/skills/import-readwise/SKILL.md").path))
         let settings = try String(contentsOf: workspace.appendingPathComponent(".claude/settings.json"), encoding: .utf8)
         XCTAssertTrue(settings.contains("active-user"))
         XCTAssertTrue(settings.contains("active-file"))
@@ -59,9 +61,31 @@ final class AmbientWorkspaceTests: XCTestCase {
             store.suggestions.contains { $0.skillName == AmbientSkillName.captureSource.rawValue },
             "suggestions: \(store.suggestions.map(\.skillName))"
         )
+        XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.appendingPathComponent("skills/capture-source/SKILL.md").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: workspace.appendingPathComponent("skills/import-readwise/SKILL.md").path))
         let capturedContent = try String(contentsOf: XCTUnwrap(capturedURL), encoding: .utf8)
         XCTAssertTrue(capturedContent.contains("action_level: suggest"))
         XCTAssertTrue(capturedContent.contains("updated_by: kuro"))
+    }
+
+    @MainActor
+    func testWorkspaceStoreCloseWorkspaceClearsOpenState() throws {
+        let workspace = temporaryDirectory()
+        let store = WorkspaceStore()
+
+        store.open(rootURL: workspace)
+        _ = store.capture(text: "# Close Me", as: .note)
+        try store.runMaintenance()
+
+        store.closeWorkspace()
+
+        XCTAssertNil(store.rootURL)
+        XCTAssertEqual(store.items, [])
+        XCTAssertEqual(store.suggestions, [])
+        XCTAssertEqual(store.jobs, [])
+        XCTAssertEqual(store.profiles, [WorkspaceProfile(id: WorkspaceProfile.defaultID)])
+        XCTAssertEqual(store.activeProfileID, WorkspaceProfile.defaultID)
+        XCTAssertNil(store.lastError)
     }
 
     @MainActor

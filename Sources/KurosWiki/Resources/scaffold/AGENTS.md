@@ -82,8 +82,6 @@ Read the relevant skill file before running a workflow.
 | `research-sprint` | Run a focused research pass |
 | `whoami` | Report the active workspace profile |
 
-Legacy wiki skills may also be present for import, ingest, lint, Readwise, and upgrade workflows.
-
 ## Live Viewer
 
 Kuro's Wiki watches this folder. Markdown and CSS changes trigger rebuilds. If the viewer misses a bulk update, touch `.rebuild`:

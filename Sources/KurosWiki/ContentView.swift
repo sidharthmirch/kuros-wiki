@@ -150,6 +150,7 @@ struct ContentView: View {
     @State private var publishResult: PublishResult? = nil
     @State private var publishError: String? = nil
     @State private var publishConfig: PublishConfig? = nil
+    private let vaultRecentsStore = VaultRecentsStore()
 
     private var folderDisplayName: String {
         rootURL?.lastPathComponent ?? "Kuro's Wiki"
@@ -177,13 +178,23 @@ struct ContentView: View {
             }
         }
         .onDisappear {
-            backgroundTimer?.invalidate()
-            backgroundTimer = nil
-            fileWatcher?.stop()
-            fileWatcher = nil
+            stopVaultActivity()
         }
         .onReceive(NotificationCenter.default.publisher(for: .openFolder)) { _ in
-            openFolder()
+            openVaultPicker()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openVault)) { _ in
+            openVaultPicker()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openRecentVault)) { notification in
+            guard let path = notification.object as? String else { return }
+            openRecentVault(path: path)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showWelcomeScreen)) { _ in
+            showWelcomeScreen()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showGettingStartedGuide)) { _ in
+            showGettingStartedGuide()
         }
         .onReceive(NotificationCenter.default.publisher(for: .goBack)) { _ in
             goBack()
@@ -276,7 +287,7 @@ struct ContentView: View {
                     .buttonStyle(.plain)
 
                     Button {
-                        openFolder()
+                        openVaultPicker()
                     } label: {
                         HStack {
                             Image(systemName: "folder")
@@ -613,16 +624,7 @@ struct ContentView: View {
                             .font(.system(size: 10, weight: .regular, design: .monospaced))
                             .tracking(0.8)
                             .foregroundStyle(Color.toolbarText)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(Color.clear)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 3)
-                                    .strokeBorder(Color.sidebarRule, lineWidth: 1)
-                            )
+                            .padding(.horizontal, 2)
                     }
                     .buttonStyle(.plain)
                     .help("Workspace profile settings")
@@ -642,16 +644,7 @@ struct ContentView: View {
                         .font(.system(size: 10, weight: .regular, design: .monospaced))
                         .tracking(0.8)
                         .foregroundStyle(Color.toolbarText)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(Color.clear)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 3)
-                                .strokeBorder(Color.sidebarRule, lineWidth: 1)
-                        )
+                        .padding(.horizontal, 2)
                     }
                     .buttonStyle(.plain)
                     .help("AI provider settings")
@@ -1037,69 +1030,90 @@ struct ContentView: View {
     // MARK: - Actions
 
     func openFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = true
-        panel.allowedContentTypes = [.folder, .plainText]
-        panel.allowsMultipleSelection = false
-        panel.message = "Choose a markdown file or a folder"
-
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        openURL(url)
+        openVaultPicker()
     }
 
-    private func openURL(_ url: URL) {
-        var isDir: ObjCBool = false
-        FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
+    private func openVaultPicker() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = false
+        panel.message = "Choose a vault folder"
 
-        if isDir.boolValue {
-            backgroundTimer?.invalidate()
-            backgroundTimer = nil
-            fileWatcher?.stop()
-            fileWatcher = nil
-            rootURL = url
-            workspaceStore.open(rootURL: url)
-            tree = scanOneLevel(at: url)
-            selectedFileURL = nil
-            fileContent = ""
-            compiledFileURL = nil
-            backHistory = []
-            forwardHistory = []
-            lastFolderPath = url.path
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        openVault(at: url)
+    }
 
-            // Auto-expand top-level folders except site/
-            expandedFolders = Set(tree.filter { $0.isDirectory && $0.name != "site" }.map { $0.url })
-            // Lazy-load children for expanded folders
-            for node in tree where node.isDirectory {
-                if let kids = node.children, kids.isEmpty {
-                    expandNode(node)
-                }
-            }
-            let snapshot = tree; tree = []; tree = snapshot
-
-            terminalSession.startIfNeeded(workingDirectory: url)
-
-            let c = Compiler(sourceDir: url)
-            compiler = c
-            loadPublishConfig()
-            // scanPages is fast (~150ms) and JSContext isn't thread-safe,
-            // so run it on the main thread to avoid racing with Timer/FileWatcher.
-            c.scanPages()
-            let home = url.appendingPathComponent("wiki/home.md")
-            if FileManager.default.fileExists(atPath: home.path) {
-                selectedFileURL = home
-                loadFile(home)
-            }
-            // Background drip: compile remaining pages a few at a time
-            startBackgroundCompilation(c)
-            // Watch for file changes (CSS, markdown, new/deleted files)
-            startFileWatcher(directory: url, compiler: c)
-        } else {
-            rootURL = url.deletingLastPathComponent()
-            tree = []
-            selectedFileURL = url
-            loadFile(url)
+    private func openRecentVault(path: String) {
+        let url = URL(fileURLWithPath: path)
+        guard isExistingDirectory(url) else {
+            pruneRecentVault(path: path)
+            return
         }
+        openVault(at: url)
+    }
+
+    private func showWelcomeScreen() {
+        closeVaultSession()
+        lastFolderPath = ""
+    }
+
+    private func showGettingStartedGuide() {
+        guard rootURL != nil else { return }
+        showPostCreateGuide = true
+        selectedFileURL = nil
+        compiledFileURL = nil
+        fileContent = ""
+    }
+
+    private func openVault(at url: URL, showGuide: Bool = false, recordRecent: Bool = true) {
+        guard isExistingDirectory(url) else { return }
+
+        closeVaultSession()
+        rootURL = url
+        workspaceStore.open(rootURL: url)
+        tree = scanOneLevel(at: url)
+        selectedFileURL = nil
+        fileContent = ""
+        compiledFileURL = nil
+        backHistory = []
+        forwardHistory = []
+        lastFolderPath = url.path
+        showPostCreateGuide = showGuide
+
+        if recordRecent {
+            vaultRecentsStore.record(path: url.path)
+            NotificationCenter.default.post(name: .vaultRecentsDidChange, object: nil)
+        }
+
+        // Auto-expand top-level folders except site/
+        expandedFolders = Set(tree.filter { $0.isDirectory && $0.name != "site" }.map { $0.url })
+        // Lazy-load children for expanded folders
+        for node in tree where node.isDirectory {
+            if let kids = node.children, kids.isEmpty {
+                expandNode(node)
+            }
+        }
+        let snapshot = tree; tree = []; tree = snapshot
+
+        terminalSession.startIfNeeded(workingDirectory: url)
+
+        let c = Compiler(sourceDir: url)
+        compiler = c
+        loadPublishConfig()
+        // scanPages is fast (~150ms) and JSContext isn't thread-safe,
+        // so run it on the main thread to avoid racing with Timer/FileWatcher.
+        c.scanPages()
+        let home = url.appendingPathComponent("wiki/home.md")
+        if FileManager.default.fileExists(atPath: home.path), !showGuide {
+            selectedFileURL = home
+            loadFile(home)
+        }
+        // Background drip: compile remaining pages a few at a time
+        startBackgroundCompilation(c)
+        // Watch for file changes (CSS, markdown, new/deleted files)
+        startFileWatcher(directory: url, compiler: c)
     }
 
     private func createNewWiki() {
@@ -1115,8 +1129,7 @@ struct ContentView: View {
         do {
             try WikiScaffold.create(at: wikiURL, name: name)
             showNewWikiSheet = false
-            showPostCreateGuide = true
-            openURL(wikiURL)
+            openVault(at: wikiURL, showGuide: true)
         } catch {
             print("[scaffold] Error creating wiki: \(error)")
             // Still dismiss the sheet and show an error
@@ -1134,8 +1147,48 @@ struct ContentView: View {
         guard isFirstInstance else { return }
         guard !lastFolderPath.isEmpty else { return }
         let url = URL(fileURLWithPath: lastFolderPath)
-        guard FileManager.default.fileExists(atPath: url.path) else { return }
-        openURL(url)
+        guard isExistingDirectory(url) else { return }
+        openVault(at: url)
+    }
+
+    private func closeVaultSession() {
+        stopVaultActivity()
+        rootURL = nil
+        tree = []
+        selectedFileURL = nil
+        fileContent = ""
+        compiledFileURL = nil
+        compiler = nil
+        backHistory = []
+        forwardHistory = []
+        expandedFolders = []
+        showPostCreateGuide = false
+        publishConfig = nil
+        publishError = nil
+        publishResult = nil
+        isPublishing = false
+        workspaceStore.closeWorkspace()
+    }
+
+    private func stopVaultActivity() {
+        backgroundTimer?.invalidate()
+        backgroundTimer = nil
+        fileWatcher?.stop()
+        fileWatcher = nil
+    }
+
+    private func isExistingDirectory(_ url: URL) -> Bool {
+        var isDir: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) && isDir.boolValue
+    }
+
+    private func pruneRecentVault(path: String) {
+        let remainingPaths = vaultRecentsStore.load().filter { $0 != path }
+        vaultRecentsStore.clear()
+        for recentPath in remainingPaths.reversed() {
+            vaultRecentsStore.record(path: recentPath)
+        }
+        NotificationCenter.default.post(name: .vaultRecentsDidChange, object: nil)
     }
 
     private func loadFile(_ url: URL) {
@@ -1498,24 +1551,24 @@ struct ContentView: View {
 
                     VStack(alignment: .leading, spacing: 10) {
                         seedOption(
-                            icon: "book",
-                            title: "Import from Readwise",
-                            command: "/import-readwise"
-                        )
-                        seedOption(
                             icon: "link",
-                            title: "Ingest an article",
-                            command: "Ingest this article: [paste URL]"
+                            title: "Capture a source",
+                            command: "Capture this source: [paste URL]"
                         )
                         seedOption(
-                            icon: "folder",
-                            title: "Import existing files",
-                            command: "Ingest the files in ~/my-notes/ into this wiki"
+                            icon: "note.text",
+                            title: "Distill a note",
+                            command: "Use distill-note on inbox/my-rough-note.md"
+                        )
+                        seedOption(
+                            icon: "point.3.connected.trianglepath.dotted",
+                            title: "Connect a thread",
+                            command: "Use connect-thread to link my notes about [topic]"
                         )
                         seedOption(
                             icon: "text.bubble",
-                            title: "Start from a topic",
-                            command: "Start a wiki about [your topic]"
+                            title: "Run a research sprint",
+                            command: "Use research-sprint for [topic]"
                         )
                     }
                 }
